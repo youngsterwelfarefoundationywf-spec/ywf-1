@@ -110,6 +110,7 @@ ALTER TABLE ywf_users ADD COLUMN IF NOT EXISTS photo_url TEXT;
 ALTER TABLE ywf_payment_requests ADD COLUMN IF NOT EXISTS type TEXT CHECK (type IN ('deposit', 'fine'));
 ALTER TABLE ywf_payment_requests ADD COLUMN IF NOT EXISTS month_year TEXT;
 ALTER TABLE ywf_payment_requests ADD COLUMN IF NOT EXISTS payment_method TEXT;
+ALTER TABLE ywf_payment_requests ADD COLUMN IF NOT EXISTS transaction_id TEXT;
 ALTER TABLE ywf_payment_requests ADD COLUMN IF NOT EXISTS note TEXT;
 ALTER TABLE ywf_payment_requests ADD COLUMN IF NOT EXISTS processed_by UUID REFERENCES ywf_users(id);
 ALTER TABLE ywf_payment_requests ADD COLUMN IF NOT EXISTS processed_at TIMESTAMPTZ;

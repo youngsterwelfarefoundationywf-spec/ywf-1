@@ -334,15 +334,27 @@ function App() {
 
       if (error) {
         console.warn('User data fetch error:', error.message);
-        // If it's the foundation email, we should still allow access as a fallback or create a profile
-        if (email.toLowerCase() === 'youngsterwelfarefoundationywf@gmail.com') {
-           setUserData({
-              id: session?.user?.id || '',
-              email: email.toLowerCase(),
-              full_name: 'Foundation Admin',
-              role: 'super_admin',
-              is_active: true
-           } as UserData);
+        // If profile doesn't exist (PGRST116), try to create one if it's the first login
+        if ((error as any).code === 'PGRST116' || error.message.includes('No object found')) {
+           const isFoundation = email.toLowerCase() === 'youngsterwelfarefoundationywf@gmail.com';
+           const { data: newUser, error: createError } = await supabase
+             .from('ywf_users')
+             .insert({
+                id: session?.user?.id,
+                email: email.toLowerCase(),
+                full_name: session?.user?.user_metadata?.full_name || (isFoundation ? 'Foundation Admin' : 'নতুন সদস্য'),
+                role: (isFoundation || email.toLowerCase() === 'youngsterwelfarefoundationywf@gmail.com') ? 'super_admin' : 'member',
+                is_active: true
+             })
+             .select()
+             .single();
+           
+           if (!createError) {
+             setUserData(newUser);
+           } else {
+             console.error('Auto profile creation failed:', createError);
+             setUserData(null);
+           }
         } else {
           setUserData(null);
         }
@@ -2529,44 +2541,75 @@ function PaymentRequestsView({ user, toast }: { user: UserData, toast: any }) {
   };
 
   const handleAction = async (id: string, action: 'approve' | 'reject', req: any) => {
-    if (action === 'approve') {
-       // Create transaction
-       const { error: tErr } = await supabase.from('ywf_transactions').insert({
-          member_id: req.member_id,
-          amount: req.amount,
-          type: req.type === 'fine' ? 'deposit' : req.type,
-          month_year: req.month_year,
-          payment_method: req.payment_method,
-          note: `${req.type === 'fine' ? 'জরিমানা পরিশোধ' : 'অনুমোদিত পেমেন্ট'}: ${req.note || ''}`,
-          status: 'approved'
-       });
-       if (tErr) {
-         toast('লেনদেন তৈরি করা যায়নি: ' + tErr.message, 'e');
-         return;
-       }
+    setLoading(true);
+    try {
+      if (action === 'approve') {
+         // Create transaction for financial records
+         const { error: tErr } = await supabase.from('ywf_transactions').insert({
+            member_id: req.member_id,
+            amount: req.amount,
+            type: req.type === 'fine' ? 'deposit' : req.type,
+            month_year: req.month_year,
+            payment_method: req.payment_method,
+            transaction_id: req.transaction_id || (req.note?.includes('TrxID:') ? req.note.split('TrxID:')[1].trim() : ''),
+            note: `${req.type === 'fine' ? 'জরিমানা পরিশোধ' : 'মাসিক চাঁদা পরিশোধ'}: ${req.note || ''}`,
+            status: 'approved',
+            date: new Date().toISOString().split('T')[0]
+         });
+         
+         if (tErr) throw tErr;
 
-       // If it's a fine, mark the oldest pending fine for this member as paid
-       if (req.type === 'fine') {
-          const { data: pendingFines } = await supabase
-            .from('ywf_fines')
-            .select('id')
-            .eq('member_id', req.member_id)
-            .eq('status', 'pending')
-            .order('created_at', { ascending: true })
-            .limit(1);
-          
-          if (pendingFines && pendingFines.length > 0) {
-             await supabase.from('ywf_fines').update({ status: 'paid', is_paid: true }).eq('id', pendingFines[0].id);
-          }
-       }
+         // If it's a deposit, add to ywf_deposits for tracking
+         if (req.type === 'deposit') {
+            await supabase.from('ywf_deposits').insert({
+               member_id: req.member_id,
+               amount: req.amount,
+               month_year: req.month_year,
+               payment_method: req.payment_method,
+               transaction_id: req.transaction_id || (req.note?.includes('TrxID:') ? req.note.split('TrxID:')[1].trim() : ''),
+               date: new Date().toISOString().split('T')[0]
+            });
+         }
+
+         // If it's a fine, mark the specific fine or create matching paid fine record
+         if (req.type === 'fine') {
+            const { data: pendingFines } = await supabase
+              .from('ywf_fines')
+              .select('id')
+              .eq('member_id', req.member_id)
+              .eq('status', 'pending')
+              .order('created_at', { ascending: true })
+              .limit(1);
+            
+            if (pendingFines && pendingFines.length > 0) {
+               await supabase.from('ywf_fines').update({ 
+                  status: 'paid', 
+                  is_paid: true,
+                  paid_at: new Date().toISOString()
+               }).eq('id', pendingFines[0].id);
+            }
+         }
+      }
+
+      const { error: reqError } = await supabase
+        .from('ywf_payment_requests')
+        .update({ 
+          status: action === 'approve' ? 'approved' : 'rejected', 
+          processed_by: user.id, 
+          processed_at: new Date().toISOString() 
+        })
+        .eq('id', id);
+      
+      if (reqError) throw reqError;
+      
+      toast(action === 'approve' ? 'পেমেন্ট অনুমোদিত হয়েছে' : 'পেমেন্ট প্রত্যাখ্যাত হয়েছে', 's');
+      fetchReqs();
+    } catch (err: any) {
+      console.error('Action error:', err);
+      toast('ত্রুটি: ' + err.message, 'e');
+    } finally {
+      setLoading(false);
     }
-
-    const { error } = await supabase
-      .from('ywf_payment_requests')
-      .update({ status: action === 'approve' ? 'approved' : 'rejected', processed_by: user.id, processed_at: new Date().toISOString() })
-      .eq('id', id);
-    
-    if (!error) fetchReqs();
   };
 
   if (loading) return <div className="flex justify-center py-20"><div className="sp" /></div>;
@@ -2631,6 +2674,7 @@ function PayNowView({ user, settings, toast }: { user: UserData, settings: any, 
         type: type,
         month_year: `${year}-${month}`,
         payment_method: method,
+        transaction_id: trnId,
         note: trnId ? `TrxID: ${trnId}` : '',
         status: 'pending'
       });
