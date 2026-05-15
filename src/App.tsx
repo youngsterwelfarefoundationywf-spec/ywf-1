@@ -2866,31 +2866,56 @@ function StatementView({ user, userId, toast }: { user: UserData, userId?: strin
     setLoading(false);
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (item: any) => {
     if (!window.confirm('আপনি কি নিশ্চিত যে এই লেনদেনটি মুছে ফেলতে চান?')) return;
-    const { error } = await supabase.from('ywf_transactions').delete().eq('id', id);
-    if (!error) {
+    
+    try {
+      // 1. Delete from ledger
+      const { error: tErr } = await supabase.from('ywf_transactions').delete().eq('id', item.id);
+      if (tErr) throw tErr;
+
+      // 2. Delete from source table if linked
+      if (item.ref_id) {
+        let table = '';
+        if (item.type === 'expense') table = 'ywf_expenses';
+        if (item.type === 'profit') table = 'ywf_profits';
+        if (item.type === 'investment') table = 'ywf_investments';
+        if (table) await supabase.from(table).delete().eq('id', item.ref_id);
+      }
+
       toast('লেনদেন মুছে ফেলা হয়েছে', 's');
       fetchData();
-    } else {
-      toast('ডিলিট করা যায়নি: ' + error.message, 'e');
+    } catch (err: any) {
+      toast('ডিলিট করা যায়নি: ' + err.message, 'e');
     }
   };
 
   const handleEdit = async () => {
     const cleanAmount = parseFloat(bnToEn(amount));
     if (!amount || isNaN(cleanAmount)) return;
-    const { error } = await supabase.from('ywf_transactions').update({
-      amount: cleanAmount
-    }).eq('id', editingItem.id);
 
-    if (!error) {
+    try {
+      // 1. Update ledger
+      const { error: tErr } = await supabase.from('ywf_transactions').update({
+        amount: cleanAmount
+      }).eq('id', editingItem.id);
+      if (tErr) throw tErr;
+
+      // 2. Update source table if linked
+      if (editingItem.ref_id) {
+        let table = '';
+        if (editingItem.type === 'expense') table = 'ywf_expenses';
+        if (editingItem.type === 'profit') table = 'ywf_profits';
+        if (editingItem.type === 'investment') table = 'ywf_investments';
+        if (table) await supabase.from(table).update({ amount: cleanAmount }).eq('id', editingItem.ref_id);
+      }
+
       toast('লেনদেন আপডেট করা হয়েছে', 's');
       setIsModalOpen(false);
       setEditingItem(null);
       fetchData();
-    } else {
-      toast('আপডেট করা যায়নি: ' + error.message, 'e');
+    } catch (err: any) {
+      toast('আপডেট করা যায়নি: ' + err.message, 'e');
     }
   };
 
