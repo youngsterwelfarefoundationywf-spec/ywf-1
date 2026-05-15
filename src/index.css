@@ -1,0 +1,40 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  
+  --color-brand-primary: #0f4c2a;
+  --color-brand-light: #1a7a45;
+  --color-brand-accent: #f5a623;
+  --color-brand-danger: #ff4757;
+  --color-brand-warning: #ffa502;
+  --color-brand-success: #2ed573;
+  --color-brand-info: #1e90ff;
+  
+  --color-bg-main: #060d0a;
+  --color-bg-secondary: #0d1a12;
+  
+  --color-text-primary: #e8f5ee;
+  --color-text-muted: #7a9a85;
+  --color-text-dark: #4a6a55;
+}
+
+@layer base {
+  body {
+    @apply bg-bg-main text-text-primary font-sans;
+  }
+}
+
+.sp {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(26, 122, 69, 0.2);
+  border-top-color: var(--color-brand-light);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
