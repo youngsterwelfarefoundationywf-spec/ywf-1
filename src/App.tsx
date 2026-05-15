@@ -2100,10 +2100,10 @@ function SettingsView({ user, onUpdate, setActiveTab, toast }: { user: UserData,
       const { error } = await supabase.from('ywf_settings').upsert(updates, { onConflict: 'key' });
       if (error) throw error;
       
-      toast('পেমেন্ট সেটিংস সেভ করা হয়েছে', 's');
+      toast('সেটিংস সেভ করা হয়েছে', 's');
       if (onUpdate) onUpdate();
     } catch (err: any) {
-      toast('ত্রুটি পেমেন্ট সেভ করতে: ' + err.message, 'e');
+      toast('ত্রুটি সেটিংস সেভ করতে: ' + err.message, 'e');
     } finally {
       setSaving(false);
     }
@@ -2120,10 +2120,10 @@ function SettingsView({ user, onUpdate, setActiveTab, toast }: { user: UserData,
       const { error } = await supabase.from('ywf_settings').upsert(updates, { onConflict: 'key' });
       if (error) throw error;
       
-      toast('জরিমানার নিয়ম সেভ করা হয়েছে', 's');
+      toast('সেটিংস আপডেট করা হয়েছে', 's');
       if (onUpdate) onUpdate();
     } catch (err: any) {
-      toast('ত্রুটি জরিমানা সেভ করতে: ' + err.message, 'e');
+      toast('ত্রুটি সেটিংস আপডেট করতে: ' + err.message, 'e');
     } finally {
       setSaving(false);
     }

@@ -144,9 +144,12 @@ CREATE POLICY "Admins can update profiles" ON ywf_users FOR UPDATE USING (EXISTS
 
 -- Policies for ywf_settings:
 -- 1. Everyone can read settings
--- 2. Only super_admins can manage settings
-CREATE POLICY "Anyone can read settings" ON ywf_settings FOR SELECT USING (true);
-CREATE POLICY "Super admins can manage settings" ON ywf_settings FOR ALL USING (EXISTS (SELECT 1 FROM ywf_users WHERE id = auth.uid() AND role = 'super_admin'));
+-- 2. Only super_admins can manage (INSERT, UPDATE, DELETE) settings
+CREATE POLICY "Settings are viewable by everyone" ON ywf_settings FOR SELECT USING (true);
+CREATE POLICY "Settings are manageable by super admins" ON ywf_settings FOR ALL 
+TO authenticated 
+USING ( (SELECT role FROM ywf_users WHERE id = auth.uid()) = 'super_admin' )
+WITH CHECK ( (SELECT role FROM ywf_users WHERE id = auth.uid()) = 'super_admin' );
 
 -- Policies for ywf_transactions:
 -- 1. Users can read their own transactions
