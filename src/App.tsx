@@ -25,6 +25,7 @@ import {
   Plus,
   Search,
   ChevronRight,
+  ChevronLeft,
   Camera,
   Image,
   PiggyBank,
@@ -38,11 +39,18 @@ import {
   Trash,
   Save,
   ShieldCheck,
+  Shield,
   FolderX,
   Calendar,
   Filter,
   CircleDollarSign,
-  XCircle
+  XCircle,
+  Clock,
+  Scale,
+  Phone,
+  Globe,
+  Lock,
+  User as UserIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -193,16 +201,19 @@ const Card = ({ children, title, action, className = "" }: { children: React.Rea
   </div>
 );
 
-const StatCard = ({ icon: Icon, label, value, sub, colorClass }: { icon: any, label: string, value: string, sub: string, colorClass: string }) => (
-  <div className="bg-[#0a120e] border border-[#1a2e22] rounded-[2rem] p-7 group hover:border-brand-primary/30 transition-all duration-500 relative overflow-hidden">
-    <div className="absolute top-0 right-0 w-32 h-32 bg-white/1 blur-[100px] pointer-events-none" />
-    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-6 shadow-inner ${colorClass}`}>
-      <Icon className="w-6 h-6" />
+const StatCard = ({ icon: Icon, label, value, sub, colorClass, onClick, isCurrency = true }: { icon: any, label: string, value: string, sub: string, colorClass: string, onClick?: () => void, isCurrency?: boolean }) => (
+  <button 
+    onClick={onClick}
+    disabled={!onClick}
+    className={`bg-[#0a120e] border border-[#1a2e22] rounded-[1.5rem] p-5 lg:p-6 text-left group hover:border-brand-primary/30 transition-all duration-300 relative overflow-hidden ${onClick ? 'cursor-pointer active:scale-[0.98]' : 'cursor-default'}`}
+  >
+    <div className={`w-10 h-10 lg:w-12 lg:h-12 rounded-xl flex items-center justify-center mb-4 lg:mb-6 shadow-xl ${colorClass}`}>
+      <Icon className="w-5 h-5 lg:w-6 lg:h-6" />
     </div>
-    <div className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] mb-2">{label}</div>
-    <div className="text-3xl font-black tracking-tight text-white mb-2">{value}</div>
-    <div className="text-[11px] font-bold text-text-dark tracking-tight">{sub}</div>
-  </div>
+    <div className="text-[10px] font-bold text-text-muted uppercase tracking-tight mb-1">{label}</div>
+    <div className="text-xl lg:text-2xl font-black tracking-tight text-white mb-1">{isCurrency ? `৳${value}` : value}</div>
+    <div className="text-[10px] font-medium text-text-dark truncate whitespace-nowrap">{sub}</div>
+  </button>
 );
 
 // --- Main App ---
@@ -426,40 +437,44 @@ function App() {
       </AnimatePresence>
 
       {/* Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 w-60 bg-bg-secondary border-r border-white/5 flex flex-col z-50 transition-transform duration-300 transform lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="p-4 border-bottom border-white/5 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-white p-1 flex-shrink-0 overflow-hidden">
-            <img 
-              src="https://enifukjimtnvkwzmervg.supabase.co/storage/v1/object/public/ywf-photos/e7e3698d-46b8-427f-a88c-5fc7c3e94293/logo.jpeg" 
-              alt="YWF" 
-              className="w-full h-full object-contain" 
-            />
+      <aside className={`fixed inset-y-0 left-0 w-64 bg-[#050a07] border-r border-white/5 flex flex-col z-50 transition-transform duration-300 transform lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="p-6 border-b border-white/5">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-xl bg-white p-1 flex-shrink-0 overflow-hidden">
+              <img 
+                src="https://enifukjimtnvkwzmervg.supabase.co/storage/v1/object/public/ywf-photos/e7e3698d-46b8-427f-a88c-5fc7c3e94293/logo.jpeg" 
+                alt="YWF" 
+                className="w-full h-full object-contain" 
+              />
+            </div>
+            <div>
+              <h2 className="text-[13px] font-black leading-tight text-white">Youngster Welfare</h2>
+              <span className="text-[10px] text-text-muted font-bold">Foundation</span>
+            </div>
           </div>
-          <div>
-            <h2 className="text-xs font-black leading-tight">Youngster Welfare</h2>
-            <span className="text-[10px] text-text-muted">Foundation</span>
-          </div>
-          <button onClick={() => setSidebarOpen(false)} className="ml-auto lg:hidden text-text-muted hover:text-white">
-            <X className="w-5 h-5" />
-          </button>
+
+          <a href="tel:01619522580" className="flex items-center gap-3 text-text-muted hover:text-brand-primary transition-colors py-1 px-1">
+             <Phone className="w-4 h-4" />
+             <span className="text-[11px] font-bold">01619522580</span>
+          </a>
         </div>
 
-        <nav className="flex-1 py-4 overflow-y-auto">
+        <nav className="flex-1 py-4 overflow-y-auto custom-scrollbar">
           {userData.role !== 'member' ? (
             <>
-              <div className="px-4 pb-2 text-[10px] font-bold text-text-dark uppercase tracking-widest">প্রধান</div>
+              <div className="px-6 py-3 text-[10px] font-black text-text-dark uppercase tracking-[0.2em]">প্রধান</div>
               <SidebarItem icon={LayoutDashboard} label="ড্যাশবোর্ড" active={activeTab === 'dashboard'} onClick={() => { setActiveTab('dashboard'); setSelectedMemberForProfile(null); setSidebarOpen(false); }} />
               <SidebarItem icon={Users} label="সদস্যগণ" active={activeTab === 'members'} onClick={() => { setActiveTab('members'); setSelectedMemberForProfile(null); setSidebarOpen(false); }} />
               <SidebarItem icon={Wallet} label="টাকা জমা" active={activeTab === 'deposit'} onClick={() => { setActiveTab('deposit'); setSelectedMemberForProfile(null); setSidebarOpen(false); }} />
               <SidebarItem icon={Bell} label="পেমেন্ট রিকোয়েস্ট" active={activeTab === 'requests'} onClick={() => { setActiveTab('requests'); setSelectedMemberForProfile(null); setSidebarOpen(false); }} badge={pendingRequestsCount} />
               
-              <div className="px-4 py-4 text-[10px] font-bold text-text-dark uppercase tracking-widest">আর্থিক</div>
+              <div className="px-6 py-4 text-[10px] font-black text-text-dark uppercase tracking-[0.2em]">আর্থিক</div>
               <SidebarItem icon={TrendingUp} label="বিনিয়োগ" active={activeTab === 'investments'} onClick={() => { setActiveTab('investments'); setSelectedMemberForProfile(null); setSidebarOpen(false); }} />
               <SidebarItem icon={BarChart3} label="লাভ" active={activeTab === 'profits'} onClick={() => { setActiveTab('profits'); setSelectedMemberForProfile(null); setSidebarOpen(false); }} />
               <SidebarItem icon={Receipt} label="খরচ" active={activeTab === 'expenses'} onClick={() => { setActiveTab('expenses'); setSelectedMemberForProfile(null); setSidebarOpen(false); }} />
               <SidebarItem icon={FileText} label="রিপোর্ট" active={activeTab === 'reports'} onClick={() => { setActiveTab('reports'); setSelectedMemberForProfile(null); setSidebarOpen(false); }} />
               
-              <div className="px-4 py-4 text-[10px] font-bold text-text-dark uppercase tracking-widest">সিস্টেম</div>
+              <div className="px-6 py-4 text-[10px] font-black text-text-dark uppercase tracking-[0.2em]">সিস্টেম</div>
               <SidebarItem icon={History} label="অডিট লগ" active={activeTab === 'audit'} onClick={() => { setActiveTab('audit'); setSelectedMemberForProfile(null); setSidebarOpen(false); }} />
               {userData.role === 'super_admin' && (
                 <SidebarItem icon={Settings} label="সেটিংস" active={activeTab === 'settings'} onClick={() => { setActiveTab('settings'); setSelectedMemberForProfile(null); setSidebarOpen(false); }} />
@@ -467,7 +482,7 @@ function App() {
             </>
           ) : (
             <>
-              <div className="px-4 pb-2 text-[10px] font-bold text-text-dark uppercase tracking-widest">আমার একাউন্ট</div>
+              <div className="px-6 py-3 text-[10px] font-black text-text-dark uppercase tracking-[0.2em]">আমার একাউন্ট</div>
               <SidebarItem icon={LayoutDashboard} label="ড্যাশবোর্ড" active={activeTab === 'dashboard'} onClick={() => { setActiveTab('dashboard'); setSelectedMemberForProfile(null); setSidebarOpen(false); }} />
               <SidebarItem icon={FileText} label="আমার স্টেটমেন্ট" active={activeTab === 'myStatement'} onClick={() => { setActiveTab('myStatement'); setSelectedMemberForProfile(null); setSidebarOpen(false); }} />
               <SidebarItem icon={CreditCard} label="পেমেন্ট করুন" active={activeTab === 'payNow'} onClick={() => { setActiveTab('payNow'); setSelectedMemberForProfile(null); setSidebarOpen(false); }} />
@@ -477,9 +492,21 @@ function App() {
           )}
         </nav>
 
-        <div className="p-4 border-t border-white/5 flex flex-col gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-brand-light to-brand-accent flex items-center justify-center font-black text-white shrink-0 overflow-hidden">
+        <div className="p-6 border-t border-white/5 space-y-6">
+          <div className="text-center space-y-2">
+            <p className="text-[9px] font-black text-text-dark uppercase tracking-widest leading-relaxed">Developed by <span className="text-text-muted">Zahid Hasan</span></p>
+            <div className="flex items-center justify-center gap-3">
+               <a href="https://facebook.com" target="_blank" rel="noreferrer" className="p-1 text-text-dark hover:text-blue-500 transition-colors">
+                  <span className="flex items-center gap-1 text-[8px] font-bold uppercase"><X className="w-3 h-3" /> Facebook</span>
+               </a>
+               <a href="#" className="p-1 text-text-dark hover:text-brand-primary transition-colors">
+                  <span className="flex items-center gap-1 text-[8px] font-bold uppercase"><Globe className="w-3 h-3" /> Website</span>
+               </a>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 p-3 bg-white/[0.03] border border-white/5 rounded-2xl">
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-white shrink-0 overflow-hidden ${userData.photo_url ? '' : 'bg-gradient-to-br from-brand-primary to-brand-accent'}`}>
               {userData.photo_url ? (
                 <img src={userData.photo_url} alt="" className="w-full h-full object-cover" />
               ) : (
@@ -487,24 +514,18 @@ function App() {
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-bold truncate">{userData.full_name}</div>
-              <div className="text-[10px] text-text-muted uppercase font-semibold">
+              <div className="text-xs font-black truncate text-white">{userData.full_name}</div>
+              <div className="text-[9px] text-text-dark uppercase font-black tracking-wider mt-0.5">
                 {userData.role === 'super_admin' ? 'সুপার অ্যাডমিন' : userData.role === 'admin' ? 'অ্যাডমিন' : 'সদস্য'}
               </div>
             </div>
             <button 
               onClick={() => supabase.auth.signOut()}
-              className="p-1 text-text-dark hover:text-brand-danger transition-colors"
+              className="p-1.5 text-text-dark hover:text-brand-danger transition-colors bg-white/5 rounded-lg"
             >
-              <LogOut className="w-4 h-4" />
+              <LogOut className="w-3.5 h-3.5" />
             </button>
           </div>
-          <button 
-            onClick={() => setShowDevProfile(true)}
-            className="text-[10px] text-text-dark hover:text-text-muted transition-colors font-bold uppercase tracking-widest text-center"
-          >
-            Developed by Zahid Hasan
-          </button>
         </div>
       </aside>
 
@@ -688,20 +709,32 @@ function Dashboard({ user, setActiveTab }: { user: UserData, setActiveTab: (tab:
   const fetchStats = async () => {
     try {
       if (user.role === 'member') {
-        const [r1, r2, r3] = await Promise.all([
+        const [r1, r2, r3, r4] = await Promise.all([
           supabase.from('ywf_transactions').select('*').eq('member_id', user.id).eq('status', 'approved'),
           supabase.from('ywf_fines').select('*').eq('member_id', user.id),
-          supabase.from('ywf_payment_requests').select('*').eq('member_id', user.id).eq('status', 'pending')
+          supabase.from('ywf_payment_requests').select('*').eq('member_id', user.id).eq('status', 'pending'),
+          supabase.from('ywf_investments').select('*').eq('member_id', user.id)
         ]);
         
         const txns = r1.data || [];
         const totDep = txns.filter(t => t.type === 'deposit').reduce((s, t) => s + Number(t.amount), 0);
+        const totProf = txns.filter(t => t.type === 'profit_share').reduce((s, t) => s + Number(t.amount), 0);
+        const totFines = (r2.data || []).reduce((s, f) => s + Number(f.amount), 0);
+        const activeInvsCount = (r4.data || []).filter(i => i.status === 'active').length;
         
         const now = new Date();
         const mk = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-        const paidThisMonth = txns.some(t => t.type === 'deposit' && t.month_year === mk);
+        const thisMonthTxn = txns.find(t => t.type === 'deposit' && t.month_year === mk);
+        const thisMonthDep = thisMonthTxn ? Number(thisMonthTxn.amount) : 0;
 
-        setStats({ totDep, paidThisMonth, pendingReqs: r3.data?.length || 0 });
+        setStats({ 
+          totDep, 
+          totProf,
+          totFines,
+          activeInvsCount,
+          thisMonthDep,
+          pendingReqs: r3.data?.length || 0 
+        });
       } else {
         const [r1, r2, r3, r4, r5, r6, r7, r8] = await Promise.all([
           supabase.from('ywf_users').select('*').eq('role', 'member'),
@@ -714,16 +747,34 @@ function Dashboard({ user, setActiveTab }: { user: UserData, setActiveTab: (tab:
           supabase.from('ywf_transactions').select('id, amount, month_year, created_at, member:ywf_users(full_name)').eq('status', 'approved').eq('type', 'deposit').order('created_at', { ascending: false }).limit(5)
         ]);
 
-        const txns = r2.data || [], invs = r3.data || [], profs = r4.data || [], exps = r5.data || [];
-        const totDep = txns.filter(t => t.type === 'deposit').reduce((s, t) => s + Number(t.amount), 0);
+        const invs = (r3.data || []) as any[], profs = (r4.data || []) as any[], exps = (r5.data || []) as any[], fines = (r6.data || []) as any[], txnsData = (r2.data || []) as any[];
+        const totDep = txnsData.filter(t => t.type === 'deposit').reduce((s, t) => s + Number(t.amount), 0);
         const totInv = invs.reduce((s, i) => s + Number(i.amount), 0);
         const totProf = profs.reduce((s, p) => s + Number(p.amount), 0);
         const totExp = exps.reduce((s, e) => s + Number(e.amount), 0);
+        const totFines = fines.reduce((s, f) => s + Number(f.amount), 0);
         const activeInvsCount = invs.filter(i => i.status === 'active').length;
-        const currentBalance = (totDep + totProf) - (totInv + totExp);
+        
+        const now = new Date();
+        const mk = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const thisMonthDep = txnsData.filter(t => t.type === 'deposit' && t.month_year === mk).reduce((s, t) => s + Number(t.amount), 0);
+        
+        const currentBalance = (totDep + totProf + totFines) - (totInv + totExp);
+        const netBalance = (totProf + totFines) - totExp;
         
         setRecentTxns(r8.data || []);
-        setStats({ totDep, totInv, totProf, totExp, activeInvsCount, currentBalance, pendingReqs: r7.count || 0 });
+        setStats({ 
+          totDep, 
+          totInv, 
+          totProf, 
+          totExp, 
+          totFines, 
+          activeInvsCount, 
+          currentBalance, 
+          netBalance,
+          thisMonthDep,
+          pendingReqs: r7.count || 0 
+        });
       }
     } catch (e) {
       console.error(e);
@@ -732,207 +783,205 @@ function Dashboard({ user, setActiveTab }: { user: UserData, setActiveTab: (tab:
     }
   };
 
-  if (loading || !stats) return <div className="flex justify-center py-20"><div className="sp" /></div>;
+  const now = new Date();
+  const mkStr = `${MB[now.getMonth()]} ${now.getFullYear()}`;
+
+  if (loading || !stats) {
+    return (
+      <div className="flex items-center justify-center p-20">
+        <div className="sp w-8 h-8 border-4 border-brand-primary border-t-transparent animate-spin rounded-full" />
+      </div>
+    );
+  }
 
   if (user.role === 'member') {
-    const now = new Date();
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-2">
-            <StatCard colorClass="bg-brand-primary/10 text-brand-primary" icon={PiggyBank} label="আমার মোট জমা" value={`৳${fmt(stats.totDep)}`} sub="সংগঠনের তহবিলে আপনার অংশ" />
+        {/* Header Info */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+             <h2 className="text-3xl font-black text-white tracking-tight">ড্যাশবোর্ড</h2>
+             <p className="text-xs text-text-muted mt-1">স্বাগতম, {user.full_name}</p>
           </div>
-          <div className="bg-[#0a120e] border border-[#1a2e22] rounded-[2.5rem] p-8 flex flex-col items-center justify-center text-center">
-             <div className="relative w-32 h-32 mb-6">
-                <svg className="w-full h-full transform -rotate-90">
-                   <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-white/5" />
-                   <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="12" fill="transparent" strokeDasharray={364.4} strokeDashoffset={stats.paidThisMonth ? 0 : 364.4} className="text-brand-primary transition-all duration-1000" />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                   {stats.paidThisMonth ? <CheckCircle className="w-10 h-10 text-brand-primary" /> : <XCircle className="w-10 h-10 text-brand-danger" />}
-                </div>
-             </div>
-             <div className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] mb-1">{MB[now.getMonth()]} পেমেন্ট</div>
-             <div className={`text-sm font-black ${stats.paidThisMonth ? 'text-brand-primary' : 'text-brand-danger'}`}>{stats.paidThisMonth ? 'পরিশোধিত' : 'বকেয়া'}</div>
-          </div>
+          <button className="bg-white/5 hover:bg-white/10 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-white border border-white/5 transition-all">
+             EN
+          </button>
         </div>
 
-        {!stats.paidThisMonth && (
-           <motion.div 
-             initial={{ opacity: 0, y: 10 }}
-             animate={{ opacity: 1, y: 0 }}
-             className="bg-brand-accent/10 border border-brand-accent/20 rounded-3xl p-6 flex flex-col sm:flex-row items-center gap-4"
-           >
-              <div className="w-12 h-12 rounded-2xl bg-brand-accent/20 flex items-center justify-center text-brand-accent shrink-0">
-                <AlertTriangle className="w-6 h-6" />
-              </div>
-              <div className="flex-1 text-center sm:text-left">
-                 <h4 className="text-sm font-black text-white">পেমেন্ট বাকি আছে !</h4>
-                 <p className="text-xs font-medium text-text-muted mt-0.5">আপনার {MB[now.getMonth()]} মাসের চাঁদা এখনো জমা দেওয়া হয়নি। অনুগ্রহ করে দ্রুত পরিশোধ করুন।</p>
-              </div>
-              <button 
-                onClick={() => setActiveTab('payNow')}
-                className="bg-brand-accent text-black px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-brand-accent/20"
-              >
-                এখনই দিন
-              </button>
-           </motion.div>
-        )}
+        {/* Member Stats Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+          <StatCard colorClass="bg-green-500/10 text-green-500" icon={PiggyBank} label="আমার মোট জমা" value={fmt(stats.totDep)} sub="সংগঠনের তহবিলে আপনার অংশ" onClick={() => setActiveTab('myStatement')} />
+          <StatCard colorClass="bg-blue-500/10 text-blue-500" icon={TrendingUp} label="বিনিয়োগ ও লাভ" value={fmt(stats.totProf)} sub="বিনিয়োগ থেকে আপনার লভ্যাংশ" onClick={() => setActiveTab('memberInv')} />
+          <StatCard colorClass="bg-red-500/10 text-red-500" icon={AlertTriangle} label="আমার জরিমানা" value={fmt(stats.totFines)} sub="পরিশোধিত ও বকেয়া" />
+          <StatCard colorClass="bg-sky-500/10 text-sky-500" icon={Calendar} label="এই মাসের কিস্তি" value={fmt(stats.thisMonthDep)} sub={mkStr} onClick={() => setActiveTab('payNow')} />
+        </div>
 
-        <Card title="সাম্প্রতিক এক্টিভিটি">
-           <div className="py-12 flex flex-col items-center justify-center opacity-20">
-              <History className="w-12 h-12 mb-2" />
-              <p className="text-[10px] font-black uppercase tracking-widest">শীঘ্রই আসছে</p>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+           {/* Payment Status Card */}
+           <div className="lg:col-span-5">
+              <Card className="h-full flex flex-col items-center justify-center min-h-[400px]">
+                 <div className="w-full flex items-center justify-between mb-8 px-2">
+                    <h3 className="font-black text-sm text-white">{MB[now.getMonth()]} মাসের পেমেন্ট</h3>
+                    <span className={`text-[10px] font-black px-3 py-1 rounded-full border ${stats.thisMonthDep > 0 ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-brand-danger/10 text-brand-danger border-brand-danger/20'}`}>
+                       {stats.thisMonthDep > 0 ? 'পরিশোধিত' : 'বকেয়া'}
+                    </span>
+                 </div>
+                 
+                 <div className="flex-1 flex flex-col items-center justify-center text-center px-6">
+                    <motion.div 
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className={`w-24 h-24 rounded-full flex items-center justify-center mb-6 shadow-2xl ${stats.thisMonthDep > 0 ? 'bg-green-500/10 border-green-500/20 text-green-500' : 'bg-brand-danger/10 border-brand-danger/20 text-brand-danger'}`}
+                    >
+                       {stats.thisMonthDep > 0 ? <CheckCircle2 className="w-12 h-12" /> : <XCircle className="w-12 h-12" />}
+                    </motion.div>
+                    <h3 className="text-xl font-black text-white mb-2">
+                       {stats.thisMonthDep > 0 ? 'ধন্যবাদ! পেমেন্ট করা হয়েছে' : 'পেমেন্ট এখনো করা হয়নি'}
+                    </h3>
+                    <p className="text-xs text-text-muted font-medium opacity-60 leading-relaxed max-w-[280px]">
+                       {stats.thisMonthDep > 0 
+                         ? `আপনি ${MB[now.getMonth()]} মাসের নির্ধারিত চাঁদা সফলভাবে জমা দিয়েছেন।`
+                         : `আপনার ${MB[now.getMonth()]} মাসের নির্ধারিত চাঁদা এখনো জমা দেওয়া হয়নি। অনুগ্রহ করে দ্রুত পরিশোধ করুন।`}
+                    </p>
+                    {stats.thisMonthDep === 0 && (
+                       <button 
+                         onClick={() => setActiveTab('payNow')}
+                         className="mt-8 bg-brand-primary text-black px-10 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-xl shadow-brand-primary/20"
+                       >
+                         এখনই পেমেন্ট করুন
+                       </button>
+                    )}
+                 </div>
+              </Card>
            </div>
-        </Card>
+
+           {/* Investment Progress/Stats for Member */}
+           <div className="lg:col-span-7">
+              <Card title="লাভ ও বিনিয়োগ সারসংক্ষেপ" className="h-full">
+                 <div className="space-y-6 pt-2">
+                    <div className="p-6 bg-white/[0.02] border border-white/5 rounded-3xl">
+                       <div className="flex justify-between items-center mb-6">
+                          <div>
+                             <div className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-1">মোট লভ্যাংশ</div>
+                             <div className="text-3xl font-black text-white">৳{fmt(stats.totProf)}</div>
+                          </div>
+                          <div className="w-12 h-12 rounded-2xl bg-orange-500/10 text-orange-500 flex items-center justify-center">
+                             <TrendingUp className="w-6 h-6" />
+                          </div>
+                       </div>
+                       <div className="space-y-2">
+                          <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-text-muted">
+                             <span>টার্গেট উন্নতি</span>
+                             <span className="text-brand-primary">৭৫%</span>
+                          </div>
+                          <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                             <motion.div initial={{ width: 0 }} animate={{ width: '75%' }} className="h-full bg-brand-primary" />
+                          </div>
+                       </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                       <div className="p-5 bg-white/[0.02] border border-white/5 rounded-2xl hover:bg-white/[0.05] transition-all group">
+                          <div className="text-[9px] font-black text-text-muted uppercase tracking-widest mb-2">সক্রিয় বিনিয়োগ</div>
+                          <div className="text-xl font-black text-white">{stats.activeInvsCount}টি</div>
+                       </div>
+                       <div className="p-5 bg-white/[0.02] border border-white/5 rounded-2xl hover:bg-white/[0.05] transition-all group">
+                          <div className="text-[9px] font-black text-text-muted uppercase tracking-widest mb-2">জরিমানা</div>
+                          <div className="text-xl font-black text-brand-danger">৳{fmt(stats.totFines)}</div>
+                       </div>
+                    </div>
+                 </div>
+              </Card>
+           </div>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      {/* Header Info */}
+      <div className="flex items-center justify-between mb-8">
+        <div>
+           <h2 className="text-3xl font-black text-white tracking-tight">ড্যাশবোর্ড</h2>
+           <p className="text-xs text-text-muted mt-1">Youngster Welfare Foundation</p>
+        </div>
+        <button className="bg-white/5 hover:bg-white/10 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-white border border-white/5 transition-all">
+           EN
+        </button>
+      </div>
+
+      {/* 8 Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+        <StatCard colorClass="bg-green-500/10 text-green-500" icon={PiggyBank} label="মোট জমা (চাঁদা)" value={fmt(stats.totDep)} sub="শুধু সদস্যদের চাঁদা" onClick={() => setActiveTab('deposit')} />
+        <StatCard colorClass="bg-blue-500/10 text-blue-500" icon={BarChart3} label="মোট বিনিয়োগ" value={fmt(stats.totInv)} sub={`${stats.activeInvsCount} টি সক্রিয়`} onClick={() => setActiveTab('investments')} />
+        <StatCard colorClass="bg-orange-500/10 text-orange-500" icon={TrendingUp} label="মোট লাভ" value={fmt(stats.totProf)} sub="বিনিয়োগ থেকে আয়" onClick={() => setActiveTab('profits')} />
+        <StatCard colorClass="bg-red-500/10 text-red-500" icon={AlertTriangle} label="মোট জরিমানা" value={fmt(stats.totFines)} sub="সব সদস্যের জরিমানা" />
+        
+        <StatCard colorClass="bg-pink-500/10 text-pink-500" icon={Receipt} label="মোট খরচ" value={fmt(stats.totExp)} sub="সব ব্যয়" onClick={() => setActiveTab('expenses')} />
+        <StatCard colorClass="bg-teal-500/10 text-teal-500" icon={Scale} label="নিট ব্যালেন্স" value={fmt(stats.netBalance)} sub="লাভ+জরিমানা-খরচ" />
+        <StatCard colorClass="bg-sky-500/10 text-sky-500" icon={Calendar} label="এই মাসের জমা" value={fmt(stats.thisMonthDep)} sub={mkStr} />
+        <StatCard colorClass="bg-yellow-500/10 text-yellow-500" icon={Clock} label="অপেক্ষমাণ" value={String(stats.pendingReqs)} sub="দেখুন" onClick={() => setActiveTab('requests')} isCurrency={false} />
+      </div>
+
+      {/* Bottom Section */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-8 bg-[#0a120e] border border-[#1a2e22] rounded-[2.5rem] p-8 relative overflow-hidden group">
-           <div className="absolute top-0 right-0 w-64 h-64 bg-brand-primary/5 rounded-full -mr-32 -mt-32 blur-[100px] pointer-events-none" />
-           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-12">
-              <div>
-                 <div className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] mb-2 flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-brand-primary animate-pulse shadow-[0_0_10px_rgba(0,223,130,0.5)]" />
-                    বর্তমান ব্যালেন্স
-                 </div>
-                 <div className="text-5xl font-black tracking-tighter text-white">৳{fmt(Math.abs(stats.currentBalance))}</div>
+        {/* Left Side: Status */}
+        <div className="lg:col-span-5 h-full">
+           <Card className="h-full flex flex-col items-center justify-center min-h-[460px]">
+              <div className="w-full flex items-center justify-between mb-8 px-2">
+                 <h3 className="font-black text-sm text-white">এই মাসে জমা দেননি</h3>
+                 <span className="bg-brand-danger/10 text-brand-danger text-[10px] font-black px-3 py-1 rounded-full border border-brand-danger/20">০ জন</span>
               </div>
-              <div className="flex gap-3">
-                 <button onClick={() => setActiveTab('requests')} className="bg-white/5 hover:bg-white/10 px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white transition-all border border-white/5">
-                    রিভিউ ({stats.pendingReqs})
-                 </button>
+              
+              <div className="flex-1 flex flex-col items-center justify-center text-center">
+                 <motion.div 
+                   initial={{ scale: 0.8, opacity: 0 }}
+                   animate={{ scale: 1, opacity: 1 }}
+                   className="w-24 h-24 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-500 mb-6 shadow-[0_0_30px_rgba(34,197,94,0.15)]"
+                 >
+                    <CheckCircle2 className="w-12 h-12" />
+                 </motion.div>
+                 <h3 className="text-xl font-black text-white mb-2">সবাই জমা দিয়েছেন! 🎉</h3>
+                 <p className="text-xs text-text-muted font-medium opacity-60 px-8 leading-relaxed">এই মাসের নির্ধারিত সকল সদস্যের চাঁদা ইতোমধ্যে গ্রহণ করা হয়েছে।</p>
               </div>
-           </div>
-
-           <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-              <div>
-                 <div className="flex justify-between items-end mb-2">
-                    <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">মোট আয়</span>
-                    <span className="text-xs font-black text-white">৳{fmt(stats.totDep + stats.totProf)}</span>
-                 </div>
-                 <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                    <div className="h-full bg-brand-primary shadow-[0_0_10px_rgba(0,223,130,0.5)]" style={{ width: '85%' }} />
-                 </div>
-              </div>
-              <div>
-                 <div className="flex justify-between items-end mb-2">
-                    <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">মোট ব্যয়</span>
-                    <span className="text-xs font-black text-white">৳{fmt(stats.totInv + stats.totExp)}</span>
-                 </div>
-                 <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                    <div className="h-full bg-brand-danger shadow-[0_0_10px_rgba(255,71,87,0.5)]" style={{ width: '45%' }} />
-                 </div>
-              </div>
-           </div>
+           </Card>
         </div>
 
-        <div className="lg:col-span-4 bg-brand-primary text-black rounded-[2.5rem] p-8 flex flex-col justify-between relative overflow-hidden group cursor-pointer active:scale-[0.98] transition-all" onClick={() => setActiveTab('requests')}>
-           <div className="absolute -right-8 -top-8 w-32 h-32 bg-black/10 rounded-full blur-2xl group-hover:scale-125 transition-transform duration-700" />
-           <div className="z-10">
-              <div className="w-12 h-12 rounded-2xl bg-black/10 flex items-center justify-center mb-6">
-                 <Bell className="w-6 h-6" />
-              </div>
-              <div className="text-[10px] font-black uppercase tracking-[0.2em] mb-1 opacity-60">পেন্ডিং পেমেন্ট</div>
-              <div className="text-4xl font-black tracking-tighter">{stats.pendingReqs}</div>
-           </div>
-           <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest z-10 pt-4">
-              যাচাই করুন <ChevronRight className="w-3 h-3" />
-           </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard colorClass="bg-brand-primary/10 text-brand-primary" icon={PiggyBank} label="সদস্য চাঁদা" value={`৳${fmt(stats.totDep)}`} sub="সংগৃহীত চাঁদা" />
-        <StatCard colorClass="bg-brand-accent/10 text-brand-accent" icon={TrendingUp} label="ব্যবসায়িক লাভ" value={`৳${fmt(stats.totProf)}`} sub="বিনিয়োগ থেকে আয়" />
-        <StatCard colorClass="bg-blue-500/10 text-blue-500" icon={CircleDollarSign} label="মোট বিনিয়োগ" value={`৳${fmt(stats.totInv)}`} sub={`${stats.activeInvsCount}টি সক্রিয়`} />
-        <StatCard colorClass="bg-brand-danger/10 text-brand-danger" icon={Receipt} label="অন্যান্য খরচ" value={`৳${fmt(stats.totExp)}`} sub="অপারেশনাল খরচ" />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card title="সাম্প্রতিক লেনদেন" className="lg:col-span-2">
-           <div className="space-y-4">
-              {recentTxns.length > 0 ? recentTxns.map((t: any, i: number) => (
-                 <div key={t.id} className="flex items-center justify-between p-4 bg-white/2 hover:bg-white/5 border border-transparent hover:border-white/5 rounded-[1.5rem] transition-all group">
-                    <div className="flex items-center gap-4">
-                       <div className="w-10 h-10 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center text-[10px] font-black text-text-dark group-hover:text-brand-primary group-hover:border-brand-primary/30 transition-all">
-                          {String(i + 1).padStart(2, '0')}
-                       </div>
-                       <div>
-                          <div className="text-sm font-black text-white">{t.member?.full_name}</div>
-                          <div className="text-[10px] text-text-muted font-black uppercase tracking-widest mt-0.5">
-                             {t.month_year ? (MB[parseInt(t.month_year.split('-')[1]) - 1] + ' ' + t.month_year.split('-')[0]) : fd(t.created_at)}
+        {/* Right Side: Transactions */}
+        <div className="lg:col-span-7">
+           <Card 
+             title="সাম্প্রতিক লেনদেন" 
+             action={<button onClick={() => setActiveTab('reports')} className="text-[10px] font-black text-text-muted hover:text-brand-primary uppercase tracking-widest transition-all bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">সব দেখুন</button>}
+             className="h-full"
+           >
+              <div className="space-y-3">
+                 {recentTxns.length > 0 ? recentTxns.map((t: any) => (
+                    <div key={t.id} className="flex items-center justify-between p-4 bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 rounded-2xl transition-all group">
+                       <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-xs font-black text-text-muted transition-all">
+                             {t.member?.full_name?.charAt(0) || 'U'}
+                          </div>
+                          <div>
+                             <div className="text-sm font-bold text-white">{t.member?.full_name}</div>
+                             <div className="text-[9px] text-text-dark font-black uppercase tracking-wider mt-0.5">
+                                {t.month_year ? (MB[parseInt(t.month_year.split('-')[1]) - 1] + ' ' + t.month_year.split('-')[0]) : fd(t.created_at)}
+                             </div>
                           </div>
                        </div>
+                       <div className="text-right">
+                          <div className="text-sm font-black text-green-500">৳{fmt(t.amount)}</div>
+                          <div className="text-[9px] text-text-dark font-black uppercase mt-0.5">জমা</div>
+                       </div>
                     </div>
-                    <div className="text-right">
-                       <div className="text-base font-black text-brand-primary">৳{fmt(t.amount)}</div>
-                       <div className="text-[9px] text-text-dark font-black uppercase">{fd(t.created_at)}</div>
+                 )) : (
+                    <div className="py-20 text-center opacity-20">
+                       <History className="w-16 h-16 mx-auto mb-2" />
+                       <p className="text-xs font-black uppercase tracking-widest text-white">লেনদেন নেই</p>
                     </div>
-                 </div>
-              )) : (
-                 <div className="py-20 text-center opacity-20">
-                    <History className="w-16 h-16 mx-auto mb-2" />
-                    <p className="text-xs font-black uppercase tracking-widest">এখনো কোনো লেনদেন নেই</p>
-                 </div>
-              )}
-              {recentTxns.length > 0 && (
-                 <button 
-                   onClick={() => setActiveTab('reports')}
-                   className="w-full py-4 text-[10px] font-black uppercase tracking-[0.2em] text-text-muted hover:text-white transition-all mt-2"
-                 >
-                   সব রিপোর্ট দেখুন →
-                 </button>
-              )}
-           </div>
-        </Card>
-
-        <div className="space-y-6">
-          <Card title="কুইক অ্যাকশন">
-             <div className="grid grid-cols-2 gap-4">
-                <ActionButton icon={Users} label="সদস্য" onClick={() => setActiveTab('members')} color="bg-blue-500" />
-                <ActionButton icon={Receipt} label="খরচ" onClick={() => setActiveTab('expenses')} color="bg-brand-danger" />
-                <ActionButton icon={TrendingUp} label="বিনিয়োগ" onClick={() => setActiveTab('investments')} color="bg-brand-primary" />
-                <ActionButton icon={Settings} label="সেটিংস" onClick={() => setActiveTab('settings')} color="bg-slate-700" />
-             </div>
-          </Card>
-
-          <Card title="অ্যাক্টিভিটি হাইলাইটস">
-            <div className="space-y-6">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  <TrendingUp className="w-5 h-5 text-brand-primary" />
-                  <span className="text-xs font-black text-text-muted uppercase tracking-wider">সক্রিয় বিনিয়োগ</span>
-                </div>
-                <span className="text-sm font-black text-white">{stats.activeInvsCount}টি</span>
+                 )}
               </div>
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  <Bell className="w-5 h-5 text-brand-info" />
-                  <span className="text-xs font-black text-text-muted uppercase tracking-wider">পেন্ডিং রিকোয়েস্ট</span>
-                </div>
-                <span className="text-sm font-black text-white">{stats.pendingReqs}টি</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  <Receipt className="w-5 h-5 text-brand-warning" />
-                  <span className="text-xs font-black text-text-muted uppercase tracking-wider">অন্যান্য খরচ</span>
-                </div>
-                <span className="text-sm font-black text-white">৳{fmt(stats.totExp)}</span>
-              </div>
-              <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
-                <motion.div 
-                  initial={{ width: 0 }}
-                  animate={{ width: '70%' }}
-                  className="h-full bg-brand-primary shadow-[0_0_10px_rgba(0,223,130,0.5)]" 
-                />
-              </div>
-            </div>
-          </Card>
+           </Card>
         </div>
       </div>
     </div>
@@ -1024,6 +1073,7 @@ function MembersView({ user, onSelectMember, toast }: { user: UserData, onSelect
       setNewNid('');
       setNewAddress('');
       fetchMembers();
+      toast('নতুন সদস্য যুক্ত করা হয়েছে');
     } catch (e: any) {
       toast(`ত্রুটি: ${e.message}`, 'e');
     } finally {
@@ -1038,82 +1088,121 @@ function MembersView({ user, onSelectMember, toast }: { user: UserData, onSelect
   );
 
   return (
-    <div className="space-y-6">
-       <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
-          <div className="relative w-full max-w-xs">
-             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-dark" />
-             <input 
-               type="text" 
-               value={search}
-               onChange={(e) => setSearch(e.target.value)}
-               placeholder="সদস্য খুঁজুন..." 
-               className="w-full bg-white/5 border border-white/10 rounded-2xl py-2.5 pl-11 pr-4 text-sm outline-none focus:border-brand-light transition-all"
-             />
+    <div className="space-y-8">
+       {/* Page Header */}
+       <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+          <div className="space-y-1">
+             <h2 className="text-3xl font-black text-white tracking-tight">সদস্যগণ</h2>
+             <p className="text-xs text-text-muted">সংগঠনের সকল নিবন্ধিত সদস্যদের তালিকা</p>
           </div>
           {(user.role === 'super_admin' || user.email === 'youngsterwelfarefoundationywf@gmail.com') && (
             <button 
               onClick={() => setIsModalOpen(true)}
-              className="w-full sm:w-auto bg-brand-light hover:bg-brand-primary text-white px-6 py-2.5 rounded-2xl text-sm font-black flex items-center justify-center gap-2 shadow-lg shadow-brand-light/20 transition-all active:scale-95"
+              className="bg-brand-primary text-black px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest flex items-center gap-2 shadow-xl shadow-brand-primary/10 transition-all active:scale-95 whitespace-nowrap"
             >
               <Plus className="w-4 h-4" /> নতুন সদস্য
             </button>
           )}
        </div>
 
+       {/* Filters and Actions */}
+       <div className="bg-[#0a120e] border border-[#1a2e22] rounded-3xl p-4 flex flex-col md:flex-row items-center gap-4">
+          <div className="relative flex-1 w-full">
+             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-dark" />
+             <input 
+               type="text" 
+               value={search}
+               onChange={(e) => setSearch(e.target.value)}
+               placeholder="সদস্যের নাম বা একাউন্ট নম্বর দিয়ে খুঁজুন..." 
+               className="w-full bg-white/[0.03] border border-white/5 rounded-2xl py-3.5 pl-12 pr-4 text-sm text-white placeholder:text-text-dark outline-none focus:border-brand-primary/30 transition-all"
+             />
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+             <span className="text-[10px] font-black text-text-dark uppercase tracking-widest px-4 border-r border-white/5 h-10 flex items-center">
+                মোট সদস্য: {filtered.length}
+             </span>
+             <button className="p-3 bg-white/[0.03] border border-white/5 rounded-xl text-text-muted hover:text-white transition-all">
+                <Filter className="w-4 h-4" />
+             </button>
+          </div>
+       </div>
+
        {loading ? (
          <div className="flex justify-center py-20"><div className="sp" /></div>
        ) : (
-         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filtered.length === 0 ? (
-               <div className="col-span-full flex flex-col items-center justify-center py-20 opacity-20">
-                  <Users className="w-16 h-16 mb-2" />
-                  <p className="text-sm">কোনো সদস্য পাওয়া যায়নি</p>
+               <div className="col-span-full bg-[#0a120e] border border-[#1a2e22] rounded-3xl py-24 flex flex-col items-center justify-center opacity-40">
+                  <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-6">
+                     <Users className="w-10 h-10 text-text-dark" />
+                  </div>
+                  <h3 className="text-lg font-black text-white mb-1">কোনো সদস্য পাওয়া যায়নি</h3>
+                  <p className="text-xs text-text-muted">অনুগ্রহ করে সদস্যের তথ্য যাচাই করে আবার চেষ্টা করুন</p>
                </div>
-            ) : filtered.map((m, i) => (
+            ) : filtered.map((m) => (
               <motion.div 
                 layout
                 key={m.id}
                 onClick={() => onSelectMember?.(m)}
-                className="bg-white/3 border border-white/7 rounded-2xl p-4 flex items-center gap-4 hover:bg-brand-light/5 hover:border-brand-light/30 transition-all cursor-pointer group relative"
+                className="bg-[#0a120e] border border-[#1a2e22] rounded-3xl p-6 hover:border-brand-primary/30 transition-all cursor-pointer group shadow-lg hover:shadow-brand-primary/5"
               >
-                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-light to-brand-accent flex items-center justify-center text-xs font-black text-white shrink-0 overflow-hidden">
-                    {i + 1}
+                 <div className="flex items-start justify-between mb-6">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-brand-primary/20 to-brand-accent/10 flex items-center justify-center text-lg font-black text-brand-primary shrink-0 group-hover:scale-105 transition-transform">
+                       {m.full_name?.charAt(0) || 'U'}
+                    </div>
+                    <div className="flex items-center gap-2">
+                       <button 
+                         onClick={(e) => {
+                           e.stopPropagation();
+                           onSelectMember?.(m);
+                         }}
+                         className="w-10 h-10 flex items-center justify-center bg-white/5 text-text-muted rounded-xl hover:bg-brand-primary hover:text-black transition-all"
+                         title="এডিট প্রোফাইল"
+                       >
+                         <Edit2 className="w-4 h-4" />
+                       </button>
+                       {(user.role === 'super_admin' || user.email === 'youngsterwelfarefoundationywf@gmail.com') && (
+                         <button 
+                           onClick={async (e) => {
+                             e.stopPropagation();
+                             if (!window.confirm(`আপনি কি নিশ্চিত যে ${m.full_name}-কে মুছে ফেলতে চান?\nসতর্কতা: এটি তার সব লেনদেন এবং রেকর্ডও মুছে ফেলবে।`)) return;
+                             try {
+                               const { error } = await supabase.from('ywf_users').delete().eq('id', m.id);
+                               if (error) throw error;
+                               fetchMembers();
+                               toast('সদস্য মুছে ফেলা হয়েছে');
+                             } catch (error: any) {
+                               toast('ডিলিট করা যায়নি: ' + error.message, 'e');
+                             }
+                           }}
+                           className="w-10 h-10 flex items-center justify-center bg-white/5 text-text-muted rounded-xl hover:bg-brand-danger hover:text-white transition-all transform active:scale-95"
+                           title="সদস্য মুছে ফেলুন"
+                         >
+                           <Trash2 className="w-4 h-4" />
+                         </button>
+                       )}
+                    </div>
                  </div>
-                 <div className="flex-1 min-w-0">
-                    <div className="text-xs font-bold truncate group-hover:text-brand-light transition-colors">{m.full_name}</div>
-                    <div className="text-[9px] text-text-muted mt-0.5">{m.account_number || '—'}</div>
-                    <div className="text-[9px] text-brand-light font-bold mt-0.5">{m.phone || m.email}</div>
-                 </div>
-                 <div className="flex gap-1.5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSelectMember?.(m);
-                      }}
-                      className="p-2 bg-blue-500/10 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition-all"
-                      title="এডিট প্রোফাইল"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </button>
-                    {(user.role === 'super_admin' || user.email === 'youngsterwelfarefoundationywf@gmail.com') && (
-                      <button 
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          if (!window.confirm('আপনি কি নিশ্চিত যে এই সদস্যকে মুছে ফেলতে চান?\nসতর্কতা: এটি তার সব লেনদেন এবং রেকর্ডও মুছে ফেলবে।')) return;
-                          try {
-                            const { error } = await supabase.from('ywf_users').delete().eq('id', m.id);
-                            if (error) throw error;
-                            fetchMembers();
-                          } catch (error: any) {
-                            toast('ডিলিট করা যায়নি: ' + error.message, 'e');
-                          }
-                        }}
-                        className="p-2 bg-brand-danger/10 text-brand-danger rounded-lg hover:bg-brand-danger hover:text-white transition-all shadow-sm"
-                        title="সদস্য মুছে ফেলুন"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
+                 
+                 <div className="space-y-4">
+                    <div className="space-y-1">
+                       <div className="text-lg font-black text-white group-hover:text-brand-primary transition-colors truncate">{m.full_name}</div>
+                       <div className="flex items-center gap-2 text-[10px] text-text-muted font-bold uppercase tracking-widest">
+                          <span className="bg-white/5 px-2 py-0.5 rounded text-text-dark">ID: {m.account_number || '—'}</span>
+                          <span className={`${m.is_active ? 'text-green-500' : 'text-brand-danger'}`}>{m.is_active ? 'Active' : 'Inactive'}</span>
+                       </div>
+                    </div>
+
+                    <div className="pt-4 border-t border-white/5 grid grid-cols-2 gap-4">
+                       <div>
+                          <div className="text-[9px] font-black text-text-dark uppercase tracking-widest mb-1">ফোন নম্বর</div>
+                          <div className="text-xs font-bold text-text-muted">{m.phone || 'N/A'}</div>
+                       </div>
+                       <div>
+                          <div className="text-[9px] font-black text-text-dark uppercase tracking-widest mb-1">ঠিকানা</div>
+                          <div className="text-xs font-bold text-text-muted truncate">{m.address || 'N/A'}</div>
+                       </div>
+                    </div>
                  </div>
               </motion.div>
             ))}
@@ -1211,7 +1300,7 @@ function DepositView({ user, settings, toast }: { user: UserData, settings: any,
     
     const cleanAmount = parseFloat(bnToEn(amount));
     if (isNaN(cleanAmount) || cleanAmount <= 0) {
-      toast('সঠিক পরিমাণ লিখুন', 'e');
+      toast('সদস্য সঠিক পরিমাণ লিখুন', 'e');
       return;
     }
 
@@ -1257,119 +1346,206 @@ function DepositView({ user, settings, toast }: { user: UserData, settings: any,
   };
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-         <Card title="টাকা জমা দিন">
-            <div className="space-y-4">
-               <Select 
-                 label="সদস্য *" 
-                 value={selectedMember} 
-                 onChange={(e) => setSelectedMember(e.target.value)}
-                 options={[{ value: '', label: 'সদস্য সিলেক্ট করুন' }, ...members.map(m => ({ value: m.id, label: `${m.full_name} (${m.account_number || '—'})` }))]} 
-               />
-               <div className="grid grid-cols-2 gap-4">
-                  <Select 
-                    label="মাস *" 
-                    value={month}
-                    onChange={(e) => setMonth(e.target.value)}
-                    options={MB.map((m, i) => ({ value: String(i + 1).padStart(2, '0'), label: m }))} 
-                  />
-                  <Select 
-                    label="বছর *" 
-                    value={year}
-                    onChange={(e) => setYear(e.target.value)}
-                    options={['2023', '2024', '2025', '2026'].map(y => ({ value: y, label: y }))} 
-                  />
-               </div>
-               <div className="grid grid-cols-2 gap-4">
-                  <Input label="পরিমাণ (৳) *" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
-                  <Select 
-                    label="পদ্ধতি" 
-                    value={method}
-                    onChange={(e) => setMethod(e.target.value)}
-                    options={[
-                      { value: 'cash', label: 'নগদ' },
-                      { value: 'bkash', label: 'বিকাশ' },
-                      { value: 'nagad', label: 'নগদ (Nagad)' },
-                      { value: 'rocket', label: 'রকেট' },
-                      { value: 'admin_entry', label: 'অ্যাডমিন' }
-                    ]} 
-                  />
-               </div>
-               <Input label="নোট" placeholder="মন্তব্য" value={note} onChange={(e) => setNote(e.target.value)} />
-               <div className="flex items-center gap-2 px-1">
-                  <input 
-                    type="checkbox" 
-                    id="hist" 
-                    checked={isHist} 
-                    onChange={(e) => setIsHist(e.target.checked)}
-                    className="w-4 h-4 rounded border-white/10 bg-white/5 text-brand-light focus:ring-brand-light" 
-                  />
-                  <label htmlFor="hist" className="text-[10px] font-bold text-text-muted uppercase cursor-pointer">পুরনো ডেটা এন্ট্রি</label>
-               </div>
-               <button 
-                 onClick={handleDeposit}
-                 disabled={loading || !selectedMember}
-                 className="w-full bg-brand-light hover:bg-brand-primary disabled:opacity-50 text-white py-3.5 rounded-2xl font-black text-sm shadow-xl shadow-brand-light/30 transition-all flex items-center justify-center gap-2 active:scale-95"
-               >
-                  {loading ? <div className="sp w-4 h-4 border-2" /> : <CheckCircle className="w-4 h-4" />}
-                  জমা নিশ্চিত করুন
-               </button>
-            </div>
-         </Card>
-         <Card title={`${MB[parseInt(month) - 1]} ${year} মাসের অবস্থা`}>
-            <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-               {statusMembers.map(m => (
-                  <div key={m.id} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0 hover:bg-white/2 px-2 rounded-lg transition-all">
-                     <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-[10px] font-black text-text-muted overflow-hidden shrink-0">
-                           {m.photo_url ? <img src={m.photo_url} alt="" className="w-full h-full object-cover" /> : m.full_name.charAt(0)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                           <div className="text-xs font-bold truncate">{m.full_name}</div>
-                        </div>
-                     </div>
-                     <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${m.paid ? 'bg-green-500/15 text-green-500' : 'bg-brand-danger/15 text-brand-danger'}`}>
-                        {m.paid ? 'পরিশোধিত' : 'বকেয়া'}
-                     </span>
-                  </div>
-               ))}
-            </div>
-         </Card>
-      </div>
+    <div className="space-y-8">
+       {/* Page Header */}
+       <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+          <div className="space-y-1">
+             <h2 className="text-3xl font-black text-white tracking-tight">ডিপোজিট ম্যানেজমেন্ট</h2>
+             <p className="text-xs text-text-muted">মাসিক জমার এন্ট্রি ও বর্তমান অবস্থা</p>
+          </div>
+          <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5">
+             <button 
+               onClick={() => setIsHist(false)}
+               className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${!isHist ? 'bg-brand-primary text-black shadow-lg shadow-brand-primary/20' : 'text-text-muted hover:text-white'}`}
+             >
+               Entry
+             </button>
+             <button 
+               onClick={() => setIsHist(true)}
+               className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isHist ? 'bg-brand-primary text-black shadow-lg shadow-brand-primary/20' : 'text-text-muted hover:text-white'}`}
+             >
+               History
+             </button>
+          </div>
+       </div>
 
-      <Card title="সাম্প্রতিক জমা (এই মাস)">
-         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {history.length === 0 ? (
-               <div className="col-span-full py-10 text-center opacity-20 text-xs">এই মাসে কোনো জমা নেই</div>
-            ) : history.map((t, idx) => (
-               <div key={t.id} className="flex items-center justify-between p-4 bg-white/3 border border-white/5 rounded-2xl group hover:bg-white/5 transition-all">
-                  <div className="flex items-center gap-3">
-                     <div className="w-8 h-8 rounded-lg bg-brand-light/10 text-brand-light flex items-center justify-center font-black text-[10px]">
-                        {idx + 1}
-                     </div>
-                     <div>
-                        <div className="text-xs font-bold text-white">{t.member?.full_name}</div>
-                        <div className="text-[9px] text-text-muted font-bold uppercase">{t.payment_method} • {fd(t.created_at)}</div>
-                     </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                     <span className="text-xs font-black text-white">৳{fmt(t.amount)}</span>
-                     {(user.role === 'super_admin' || user.email === 'youngsterwelfarefoundationywf@gmail.com') && (
-                       <button 
-                         onClick={() => deleteTxn(t.id)}
-                         className="p-1.5 text-text-dark hover:text-brand-danger bg-white/5 rounded-lg opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all"
-                       >
-                         <Trash2 className="w-3.5 h-3.5" />
-                       </button>
-                     )}
-                  </div>
-               </div>
-            ))}
-         </div>
-      </Card>
+       {!isHist ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+             <div className="bg-[#0a120e] border border-[#1a2e22] rounded-3xl p-6 shadow-2xl">
+                <div className="flex items-center gap-3 pb-4 border-b border-white/5 mb-6">
+                   <div className="w-10 h-10 rounded-xl bg-brand-primary/10 flex items-center justify-center text-brand-primary">
+                      <Plus className="w-5 h-5" />
+                   </div>
+                   <h3 className="text-sm font-black text-white uppercase tracking-wider">টাকা জমা দিন</h3>
+                </div>
+
+                <div className="space-y-6">
+                   <div className="space-y-1.5 text-left">
+                      <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest ml-1">সদস্য নির্বাচন</label>
+                      <select 
+                        value={selectedMember}
+                        onChange={e => setSelectedMember(e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 px-4 text-sm text-white outline-none focus:border-brand-primary/30 transition-all appearance-none cursor-pointer"
+                      >
+                         <option value="" className="bg-[#0a120e]">সদস্য সিলেক্ট করুন</option>
+                         {members.map(m => (
+                            <option key={m.id} value={m.id} className="bg-[#0a120e]">
+                               {m.full_name} ({m.account_number || '—'})
+                            </option>
+                         ))}
+                      </select>
+                   </div>
+
+                   <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5 text-left">
+                         <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest ml-1">মাস</label>
+                         <select 
+                           value={month}
+                           onChange={e => setMonth(e.target.value)}
+                           className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 px-4 text-sm text-white outline-none focus:border-brand-primary/30 transition-all appearance-none cursor-pointer"
+                         >
+                            {MB.map((m, i) => (
+                               <option key={m} value={String(i + 1).padStart(2, '0')} className="bg-[#0a120e]">{m}</option>
+                            ))}
+                         </select>
+                      </div>
+                      <div className="space-y-1.5 text-left">
+                         <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest ml-1">বছর</label>
+                         <select 
+                           value={year}
+                           onChange={e => setYear(e.target.value)}
+                           className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 px-4 text-sm text-white outline-none focus:border-brand-primary/30 transition-all appearance-none cursor-pointer"
+                         >
+                            {['2023', '2024', '2025', '2026'].map(y => (
+                               <option key={y} value={y} className="bg-[#0a120e]">{y}</option>
+                            ))}
+                         </select>
+                      </div>
+                   </div>
+
+                   <div className="grid grid-cols-2 gap-4">
+                      <Input label="পরিমাণ (৳) *" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
+                      <div className="space-y-1.5 text-left">
+                         <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest ml-1">পদ্ধতি</label>
+                         <select 
+                           value={method}
+                           onChange={e => setMethod(e.target.value)}
+                           className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 px-4 text-sm text-white outline-none focus:border-brand-primary/30 transition-all appearance-none cursor-pointer"
+                         >
+                            <option value="cash" className="bg-[#0a120e]">Cash</option>
+                            <option value="bkash" className="bg-[#0a120e]">bKash</option>
+                            <option value="bank" className="bg-[#0a120e]">Bank</option>
+                         </select>
+                      </div>
+                   </div>
+
+                   <div className="space-y-1.5 text-left">
+                      <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest ml-1">নোট (ঐচ্ছিক)</label>
+                      <textarea 
+                        value={note}
+                        onChange={e => setNote(e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 px-4 text-sm text-white outline-none focus:border-brand-primary/30 transition-all min-h-[100px]"
+                        placeholder="অতিরিক্ত তথ্য..."
+                      />
+                   </div>
+
+                   <button 
+                     onClick={handleDeposit}
+                     disabled={loading}
+                     className="w-full bg-brand-primary hover:bg-brand-primary/90 text-black py-4 rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-brand-primary/20 transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
+                   >
+                     {loading ? <div className="sp w-5 h-5 border-black/30 border-t-black" /> : <CheckCircle2 className="w-5 h-5" />} জমা নিশ্চিত করুন
+                   </button>
+                </div>
+             </div>
+
+             <div className="bg-[#0a120e] border border-[#1a2e22] rounded-3xl overflow-hidden shadow-2xl">
+                <div className="p-6 border-b border-white/5 flex items-center justify-between">
+                   <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-500">
+                         <Clock className="w-5 h-5" />
+                      </div>
+                      <h3 className="text-sm font-black text-white uppercase tracking-wider">স্ট্যাটাস: {month}/{year}</h3>
+                   </div>
+                </div>
+                <div className="overflow-y-auto max-h-[600px] custom-scrollbar">
+                   <table className="w-full text-left">
+                      <thead>
+                         <tr className="border-b border-white/5 bg-white/1">
+                            <th className="px-6 py-4 text-[10px] font-black text-text-dark uppercase tracking-widest">সদস্য</th>
+                            <th className="px-6 py-4 text-[10px] font-black text-text-dark uppercase tracking-widest text-right">অবস্থা</th>
+                         </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                         {statusMembers.map((m, i) => (
+                            <tr key={i} className="hover:bg-white/[0.02] transition-colors group">
+                               <td className="px-6 py-4">
+                                  <div className="text-xs font-bold text-white group-hover:text-brand-primary transition-colors">{m.full_name}</div>
+                                  <div className="text-[9px] text-text-dark uppercase tracking-widest">{m.account_number || '—'}</div>
+                               </td>
+                               <td className="px-6 py-4 text-right">
+                                  <span className={`inline-flex px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${m.paid ? 'bg-green-500/10 text-green-500' : 'bg-brand-danger/10 text-brand-danger'}`}>
+                                     {m.paid ? 'Paid' : 'Unpaid'}
+                                  </span>
+                               </td>
+                            </tr>
+                         ))}
+                      </tbody>
+                   </table>
+                </div>
+             </div>
+          </div>
+       ) : (
+          <div className="bg-[#0a120e] border border-[#1a2e22] rounded-3xl overflow-hidden shadow-2xl">
+             <div className="p-6 border-b border-white/5">
+                <div className="flex items-center gap-3">
+                   <div className="w-10 h-10 rounded-xl bg-brand-primary/10 flex items-center justify-center text-brand-primary">
+                      <History className="w-5 h-5" />
+                   </div>
+                   <h3 className="text-sm font-black text-white uppercase tracking-wider">সাম্প্রতিক ট্রানজেকশন ({month}/{year})</h3>
+                </div>
+             </div>
+             <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                   <thead>
+                      <tr className="border-b border-white/5 bg-white/1">
+                         <th className="px-6 py-4 text-[10px] font-black text-text-dark uppercase tracking-widest">সদস্য</th>
+                         <th className="px-6 py-4 text-[10px] font-black text-text-dark uppercase tracking-widest">পরিমাণ</th>
+                         <th className="px-6 py-4 text-[10px] font-black text-text-dark uppercase tracking-widest">তারিখ</th>
+                         <th className="px-6 py-4 text-[10px] font-black text-text-dark uppercase tracking-widest text-right">অ্যাকশন</th>
+                      </tr>
+                   </thead>
+                   <tbody className="divide-y divide-white/5">
+                      {history.map((h, i) => (
+                         <tr key={i} className="hover:bg-white/[0.02] transition-colors group">
+                            <td className="px-6 py-4">
+                               <div className="text-xs font-bold text-white group-hover:text-brand-primary transition-colors">{h.member?.full_name}</div>
+                               <div className="text-[9px] text-text-muted uppercase tracking-widest">{h.payment_method}</div>
+                            </td>
+                            <td className="px-6 py-4">
+                               <div className="text-xs font-black text-brand-primary group-hover:scale-105 transition-transform origin-left">৳ {h.amount}</div>
+                            </td>
+                            <td className="px-6 py-4">
+                               <div className="text-[10px] text-text-muted uppercase font-bold tracking-widest">{new Date(h.created_at).toLocaleDateString()}</div>
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                               {(user.role === 'super_admin' || user.email === 'youngsterwelfarefoundationywf@gmail.com') && (
+                                  <button 
+                                    onClick={() => deleteTxn(h.id)}
+                                    className="p-2 text-text-muted hover:text-brand-danger transition-colors bg-white/5 rounded-lg hover:bg-brand-danger/10"
+                                  >
+                                     <Trash2 className="w-4 h-4" />
+                                  </button>
+                               )}
+                            </td>
+                         </tr>
+                      ))}
+                   </tbody>
+                </table>
+             </div>
+          </div>
+       )}
     </div>
-
   );
 }
 
@@ -1462,157 +1638,198 @@ function ProfileView({ user, targetUser, onUpdate, toast }: { user: UserData, ta
   };
 
   return (
-    <div className="space-y-6 pb-20">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
-        <div>
-           <h2 className="text-3xl font-black text-white tracking-tight">{targetUser ? `${targetUser.full_name}` : 'আপনার প্রোফাইল'}</h2>
-           <p className="text-xs text-text-muted mt-1">সদস্যের বিস্তারিত তথ্য ও লেনদেন হিস্ট্রি</p>
-        </div>
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-           {targetUser && (user.role !== 'member' || user.email === 'youngsterwelfarefoundationywf@gmail.com') && (
-              <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5">
-                 <button 
-                   onClick={() => setActiveSubTab('info')}
-                   className={`px-6 py-2.5 text-xs font-black rounded-xl transition-all ${activeSubTab === 'info' ? 'bg-brand-light text-white shadow-lg' : 'text-text-muted hover:text-white'}`}
-                 >
-                   তথ্য
-                 </button>
-                 <button 
-                   onClick={() => setActiveSubTab('ledger')}
-                   className={`px-6 py-2.5 text-xs font-black rounded-xl transition-all ${activeSubTab === 'ledger' ? 'bg-brand-light text-white shadow-lg' : 'text-text-muted hover:text-white'}`}
-                 >
-                   লেনদেন
-                 </button>
-              </div>
-           )}
-           {targetUser && (
-              <button onClick={() => onUpdate()} className="text-[10px] font-black text-brand-light uppercase tracking-widest bg-brand-light/10 px-4 py-2.5 rounded-xl border border-brand-light/20 hover:bg-brand-light hover:text-white transition-all">← ফিরে যান</button>
-           )}
-        </div>
-      </div>
+    <div className="space-y-8 pb-20">
+       {/* Profile Header */}
+       <div className="flex flex-col md:flex-row items-center gap-6 p-8 bg-[#0a120e] border border-[#1a2e22] rounded-[40px] relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-brand-primary/5 rounded-full blur-3xl -mr-32 -mt-32" />
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-brand-accent/5 rounded-full blur-3xl -ml-32 -mb-32" />
 
-      {activeSubTab === 'info' ? (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1">
-          <Card title={targetUser ? "সদস্য তথ্য" : "আপনার ছবি"}>
-            <div className="flex flex-col items-center">
-              <div className="relative group p-1 bg-gradient-to-br from-brand-light/30 to-brand-accent/30 rounded-[2.8rem]">
-                <div className="w-48 h-48 rounded-[2.5rem] bg-gradient-to-br from-brand-light to-brand-accent flex items-center justify-center text-6xl font-black text-white shrink-0 overflow-hidden shadow-2xl shadow-brand-light/20 group-hover:scale-[1.02] transition-transform duration-500">
-                  {displayUser.photo_url ? <img src={displayUser.photo_url} alt={displayUser.full_name} className="w-full h-full object-cover" /> : displayUser.full_name?.charAt(0)}
-                  {!targetUser && (
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer">
-                      <Camera className="w-8 h-8 text-white" />
-                    </div>
-                  )}
+          <div className="relative group">
+             <div className="w-24 h-24 rounded-[32px] bg-gradient-to-br from-brand-primary to-brand-accent flex items-center justify-center text-4xl font-black text-black shadow-2xl overflow-hidden">
+                {displayUser.photo_url ? <img src={displayUser.photo_url} alt="" className="w-full h-full object-cover" /> : displayUser.full_name?.charAt(0)}
+             </div>
+             <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-[#0a120e] rounded-2xl border border-[#1a2e22] flex items-center justify-center text-brand-primary shadow-lg">
+                <Camera className="w-5 h-5" />
+             </div>
+          </div>
+
+          <div className="flex-1 text-center md:text-left space-y-2">
+             <h2 className="text-3xl font-black text-white tracking-tight">{displayUser.full_name}</h2>
+             <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
+                <span className="px-3 py-1 bg-brand-primary/10 text-brand-primary rounded-xl text-[10px] font-black uppercase tracking-widest border border-brand-primary/20">
+                   {displayUser.role}
+                </span>
+                <span className="px-3 py-1 bg-white/5 text-text-dark rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/5">
+                   ID: {displayUser.account_number || 'N/A'}
+                </span>
+                <span className={`px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest border ${displayUser.is_active ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-brand-danger/10 text-brand-danger border-brand-danger/20'}`}>
+                   {displayUser.is_active ? 'Active' : 'Inactive'}
+                </span>
+             </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+             {targetUser && (user.role !== 'member' || user.email === 'youngsterwelfarefoundationywf@gmail.com') && (
+                <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5">
+                   <button 
+                     onClick={() => setActiveSubTab('info')}
+                     className={`px-6 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${activeSubTab === 'info' ? 'bg-brand-primary text-black shadow-lg shadow-brand-primary/20' : 'text-text-muted hover:text-white'}`}
+                   >
+                     Info
+                   </button>
+                   <button 
+                     onClick={() => setActiveSubTab('ledger')}
+                     className={`px-6 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${activeSubTab === 'ledger' ? 'bg-brand-primary text-black shadow-lg shadow-brand-primary/20' : 'text-text-muted hover:text-white'}`}
+                   >
+                     Ledger
+                   </button>
                 </div>
-              </div>
-              <div className="mt-8 text-center w-full">
-                <h3 className="text-2xl font-black text-white tracking-tight">{displayUser.full_name}</h3>
-                <p className="text-[10px] font-black text-brand-light uppercase tracking-[0.25em] mt-2 bg-brand-light/10 px-4 py-1 rounded-full inline-block">{displayUser.role === 'super_admin' ? 'সুপার এডমিন' : (displayUser.role === 'admin' ? 'এডমিন' : 'সদস্য')}</p>
-                <div className="mt-6 flex flex-col gap-2 w-full">
-                  <div className="flex justify-between items-center px-4 py-2 bg-white/3 rounded-xl border border-white/5">
-                    <span className="text-[10px] font-bold text-text-muted uppercase">হিসাব নম্বর</span>
-                    <span className="text-xs font-black text-white">{displayUser.account_number || '—'}</span>
-                  </div>
-                  <div className="flex justify-between items-center px-4 py-2 bg-white/3 rounded-xl border border-white/5">
-                    <span className="text-[10px] font-bold text-text-muted uppercase">স্ট্যাটাস</span>
-                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${displayUser.is_active ? 'bg-green-500/15 text-green-500' : 'bg-brand-danger/15 text-brand-danger'}`}>
-                      {displayUser.is_active ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
-                    </span>
-                  </div>
+             )}
+             {targetUser && (
+                <button 
+                  onClick={() => onUpdate()}
+                  className="px-6 py-3 bg-white/5 hover:bg-white/10 text-text-muted hover:text-white border border-white/5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2"
+                >
+                   <ChevronLeft className="w-4 h-4" /> ফিরে যান
+                </button>
+             )}
+          </div>
+       </div>
+
+       {activeSubTab === 'info' ? (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+             {/* Main Info */}
+             <div className="lg:col-span-8 space-y-8">
+                <div className="bg-[#0a120e] border border-[#1a2e22] rounded-[40px] p-8 space-y-8 shadow-2xl">
+                   <div className="flex items-center gap-3 pb-4 border-b border-white/5">
+                      <div className="w-10 h-10 rounded-xl bg-brand-primary/10 flex items-center justify-center text-brand-primary">
+                         <UserIcon className="w-5 h-5" />
+                      </div>
+                      <h3 className="text-sm font-black text-white uppercase tracking-wider">ব্যক্তিগত তথ্য</h3>
+                   </div>
+
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <Input label="পূর্ণ নাম" value={fullName} onChange={e => setFullName(e.target.value)} />
+                      <Input label="ফোন নম্বর" value={phone} onChange={e => setPhone(e.target.value)} />
+                      <Input label="NID নম্বর" value={nid} onChange={e => setNid(e.target.value)} />
+                      <Input label="জন্ম তারিখ" type="date" value={dob} onChange={e => setDob(e.target.value)} />
+                   </div>
+
+                   <div className="space-y-1.5 text-left">
+                      <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest ml-1">ঠিকানা</label>
+                      <textarea 
+                        value={address}
+                        onChange={e => setAddress(e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 px-4 text-sm text-white outline-none focus:border-brand-primary/30 transition-all min-h-[120px]"
+                        placeholder="আপনার সম্পূর্ণ ঠিকানা লিখুন..."
+                      />
+                   </div>
+
+                   {isAdminEdit && (
+                      <div className="grid grid-cols-2 gap-6 pt-4 border-t border-white/5">
+                         <div className="space-y-1.5 text-left">
+                            <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest ml-1">রোল (Role)</label>
+                            <select 
+                              value={role}
+                              onChange={e => setRole(e.target.value)}
+                              className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 px-4 text-sm text-white outline-none focus:border-brand-primary/30 transition-all appearance-none cursor-pointer"
+                            >
+                               <option value="member" className="bg-[#0a120e]">Member</option>
+                               <option value="admin" className="bg-[#0a120e]">Admin</option>
+                               <option value="super_admin" className="bg-[#0a120e]">Super Admin</option>
+                            </select>
+                         </div>
+                         <div className="flex items-center gap-4 pt-6">
+                            <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">অবস্থা:</span>
+                            <button 
+                              onClick={() => setIsActive(!isActive)}
+                              className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${isActive ? 'bg-green-500/10 border-green-500/20 text-green-500' : 'bg-brand-danger/10 border-brand-danger/20 text-brand-danger'}`}
+                            >
+                               {isActive ? 'Active' : 'Blocked'}
+                            </button>
+                         </div>
+                      </div>
+                   )}
+
+                   {msg && (
+                      <div className={`p-4 rounded-2xl text-xs font-bold flex items-center gap-3 ${msg.includes('ভুল') || msg.includes('ত্রুটি') ? 'bg-brand-danger/10 text-brand-danger' : 'bg-green-500/10 text-green-500'}`}>
+                         {msg.includes('ত্রুটি') ? <XCircle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
+                         {msg}
+                      </div>
+                   )}
+
+                   <div className="pt-4">
+                      <button 
+                        onClick={handleUpdate}
+                        disabled={loading}
+                        className="w-full md:w-auto px-12 bg-brand-primary hover:bg-brand-primary/90 text-black py-4 rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-brand-primary/20 transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
+                      >
+                         {loading ? <div className="sp w-5 h-5 border-black/30 border-t-black" /> : <Save className="w-5 h-5" />} প্রোফাইল সেভ করুন
+                      </button>
+                   </div>
                 </div>
-              </div>
-            </div>
-          </Card>
-        </div>
-        <div className="lg:col-span-2 space-y-6">
-          <Card title={targetUser ? "তথ্য আপডেট করুন" : "ব্যক্তিগত তথ্য সম্পাদনা"}>
-            {msg && <div className={`mb-6 px-4 py-3 rounded-2xl text-xs font-bold flex items-center gap-3 ${msg.includes('সফল') ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-brand-danger/10 text-brand-danger border border-brand-danger/20'}`}>{msg}</div>}
-            <div className="space-y-6">
-               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                 <div className="space-y-2">
-                    <label className="text-[11px] font-black text-text-muted uppercase tracking-wider">পূর্ণ নাম</label>
-                    <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} className="w-full bg-white/3 border border-white/7 rounded-2xl p-4 text-sm focus:border-brand-light outline-none text-white transition-all" />
-                 </div>
-                 <div className="space-y-2">
-                    <label className="text-[11px] font-black text-text-muted uppercase tracking-wider">ফোন নম্বর</label>
-                    <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full bg-white/3 border border-white/7 rounded-2xl p-4 text-sm focus:border-brand-light outline-none text-white transition-all" />
-                 </div>
-               </div>
-               
-               {isAdminEdit && (
-                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-4 bg-white/3 border border-white/5 rounded-2xl">
-                    <div className="space-y-2">
-                       <label className="text-[11px] font-black text-text-muted uppercase tracking-wider">রোল সেট করুন</label>
-                       <select value={role} onChange={(e) => setRole(e.target.value as any)} className="w-full bg-bg-secondary border border-white/10 rounded-2xl p-4 text-sm focus:border-brand-light outline-none text-white">
-                          <option value="member">সদস্য</option>
-                          <option value="admin">এডমিন</option>
-                          <option value="super_admin">সুপার এডমিন</option>
-                       </select>
-                    </div>
-                    <div className="space-y-2">
-                       <label className="text-[11px] font-black text-text-muted uppercase tracking-wider">অ্যাকাউন্ট স্ট্যাটাস</label>
-                       <select value={isActive ? 'true' : 'false'} onChange={(e) => setIsActive(e.target.value === 'true')} className="w-full bg-bg-secondary border border-white/10 rounded-2xl p-4 text-sm focus:border-brand-light outline-none text-white">
-                          <option value="true">সক্রিয়</option>
-                          <option value="false">নিষ্ক্রিয়</option>
-                       </select>
-                    </div>
-                 </div>
-               )}
+             </div>
 
-               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                 <div className="space-y-2">
-                    <label className="text-[11px] font-black text-text-muted uppercase tracking-wider">জন্ম তারিখ</label>
-                    <input type="date" value={dob} onChange={(e) => setDob(e.target.value)} className="w-full bg-white/3 border border-white/7 rounded-2xl p-4 text-sm focus:border-brand-light outline-none text-white transition-all" />
-                 </div>
-                 <div className="space-y-2">
-                    <label className="text-[11px] font-black text-text-muted uppercase tracking-wider">NID নম্বর</label>
-                    <input type="text" value={nid} onChange={(e) => setNid(e.target.value)} className="w-full bg-white/3 border border-white/7 rounded-2xl p-4 text-sm focus:border-brand-light outline-none text-white transition-all" />
-                 </div>
-               </div>
-               <div className="space-y-2">
-                  <label className="text-[11px] font-black text-text-muted uppercase tracking-wider">ঠিকানা</label>
-                  <textarea value={address || ''} onChange={(e) => setAddress(e.target.value)} className="w-full bg-white/3 border border-white/7 rounded-2xl p-4 text-sm focus:border-brand-light outline-none min-h-[100px] text-white transition-all" />
-               </div>
-               <div className="space-y-2">
-                  <label className="text-[11px] font-black text-text-muted uppercase tracking-wider">ছবি পরিবর্তন</label>
-                  <input type="file" accept="image/*" onChange={(e) => setNidPhoto(e.target.files?.[0] || null)} className="w-full bg-white/3 border border-white/7 rounded-2xl p-3 text-xs text-text-muted file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-black file:bg-brand-light/10 file:text-brand-light hover:file:bg-brand-light/20 transition-all" />
-               </div>
-               <button onClick={handleUpdate} disabled={loading} className="w-full bg-brand-light text-white py-4 rounded-2xl font-black text-sm shadow-xl shadow-brand-light/20 hover:shadow-brand-light/40 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2">
-                  {loading ? <div className="sp w-5 h-5 border-white/30 border-t-white" /> : (targetUser ? 'সদস্য তথ্য আপডেট করুন' : 'তথ্য আপডেট করুন')}
-               </button>
-            </div>
-          </Card>
+             {/* Sidebar Info */}
+             <div className="lg:col-span-4 space-y-8">
+                <div className="bg-[#0a120e] border border-[#1a2e22] rounded-[40px] p-8 space-y-6 shadow-2xl">
+                   <div className="flex items-center gap-3 pb-4 border-b border-white/5">
+                      <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-500">
+                         <Lock className="w-5 h-5" />
+                      </div>
+                      <h3 className="text-sm font-black text-white uppercase tracking-wider">নিরাপত্তা</h3>
+                   </div>
+                   
+                   <Input label="নতুন পাসওয়ার্ড" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="••••••••" />
+                   <Input label="পাসওয়ার্ড নিশ্চিত করুন" type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="••••••••" />
 
-          {!targetUser && (
-            <Card title="পাসওয়ার্ড পরিবর্তন">
-              {passMsg && <div className={`mb-4 px-4 py-3 rounded-2xl text-xs font-bold flex items-center gap-3 ${passMsg.includes('সফল') ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-brand-danger/10 text-brand-danger border border-brand-danger/20'}`}>{passMsg}</div>}
-              <div className="space-y-4">
-                 <div className="space-y-2">
-                    <label className="text-[10px] font-black text-text-muted uppercase tracking-wider">নতুন পাসওয়ার্ড</label>
-                    <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="w-full bg-white/3 border border-white/7 rounded-2xl p-4 text-sm focus:border-brand-light outline-none text-white transition-all" />
-                 </div>
-                 <div className="space-y-2">
-                    <label className="text-[10px] font-black text-text-muted uppercase tracking-wider">পাসওয়ার্ড নিশ্চিত করুন</label>
-                    <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="w-full bg-white/3 border border-white/7 rounded-2xl p-4 text-sm focus:border-brand-light outline-none text-white transition-all" />
-                 </div>
-                 <button onClick={handlePasswordChange} disabled={passLoading} className="w-full bg-brand-light/10 text-brand-light py-4 rounded-2xl font-black text-sm border border-brand-light/20 hover:bg-brand-light hover:text-white transition-all active:scale-[0.98] flex items-center justify-center gap-2">
-                    {passLoading ? <div className="sp w-5 h-5 border-brand-light/30 border-t-brand-light" /> : 'পাসওয়ার্ড পরিবর্তন করুন'}
-                 </button>
-              </div>
-            </Card>
-          )}
-        </div>
-      </div>
-      ) : (
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-           <StatementView user={user} userId={displayUser.id} toast={toast} />
-        </div>
-      )}
+                   {passMsg && (
+                      <div className={`p-4 rounded-2xl text-xs font-bold leading-relaxed ${passMsg.includes('ত্রুটি') ? 'bg-brand-danger/10 text-brand-danger' : 'bg-green-500/10 text-green-500'}`}>
+                         {passMsg}
+                      </div>
+                   )}
+
+                   <button 
+                     onClick={handlePasswordChange}
+                     disabled={passLoading}
+                     className="w-full bg-white/5 hover:bg-white/10 text-white py-4 rounded-2xl text-xs font-black uppercase tracking-widest border border-white/10 transition-all active:scale-95 disabled:opacity-50"
+                   >
+                      {passLoading ? <div className="sp w-4 h-4" /> : 'পাসওয়ার্ড পরিবর্তন'}
+                   </button>
+                </div>
+
+                <div className="bg-gradient-to-br from-brand-primary to-brand-accent rounded-[40px] p-8 text-black shadow-2xl shadow-brand-primary/20 relative overflow-hidden group">
+                   <div className="absolute top-0 right-0 w-32 h-32 bg-white/20 rounded-full blur-2xl -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700" />
+                   <h4 className="text-sm font-black uppercase tracking-tighter mb-1 opacity-60 font-mono">ACCOUNT STATUS</h4>
+                   <p className="text-2xl font-black tracking-tight leading-none">Your account is fully verified.</p>
+                   <div className="mt-8 flex items-center gap-2">
+                      <div className="w-10 h-10 rounded-xl bg-black/10 flex items-center justify-center">
+                         <Shield className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-widest">System Protected</span>
+                   </div>
+                </div>
+             </div>
+          </div>
+       ) : (
+          <div className="bg-[#0a120e] border border-[#1a2e22] rounded-[40px] overflow-hidden shadow-2xl">
+             <div className="p-8 border-b border-white/5 flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-brand-primary/10 flex items-center justify-center text-brand-primary">
+                   <History className="w-6 h-6" />
+                </div>
+                <div>
+                   <h3 className="text-lg font-black text-white uppercase tracking-tight">লেনদেন খতিয়ান</h3>
+                   <p className="text-xs text-text-muted">আপনার সকল জমার বিস্তারিত তালিকা</p>
+                </div>
+             </div>
+             <div className="p-4">
+                <StatementView user={user} userId={displayUser.id} toast={toast} />
+             </div>
+          </div>
+       )}
     </div>
   );
 }
-
 // --- Login Page ---
 
 function AuditView({ user }: { user: UserData }) {
