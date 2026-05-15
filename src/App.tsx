@@ -40,7 +40,9 @@ import {
   ShieldCheck,
   FolderX,
   Calendar,
-  Filter
+  Filter,
+  CircleDollarSign,
+  XCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -613,7 +615,34 @@ export default App;
 function getTabTitle(tab: string) {
   const titles: Record<string, string> = {
     dashboard: 'ড্যাশবোর্ড',
-    members: 'সদস্�  switch (tab) {
+    members: 'সদস্যগণ',
+    deposit: 'টাকা জমা',
+    profile: 'প্রোফাইল',
+    requests: 'পেমেন্ট রিকোয়েস্ট',
+    payNow: 'পেমেন্ট করুন',
+    myStatement: 'আমার স্টেটমেন্ট',
+    reports: 'রিপোর্টস',
+    investments: 'বিনিয়োগ',
+    profits: 'লভ্যাংশ',
+    expenses: 'খরচ',
+    memberInv: 'বিনিয়োগ ও লাভ',
+    audit: 'অডিট লগ',
+    settings: 'সিস্টেম সেটিংস'
+  };
+  return titles[tab] || 'ড্যাশবোর্ড';
+}
+
+function renderTabContent(
+  tab: string, 
+  user: UserData, 
+  refreshUser: () => void, 
+  settings: any, 
+  selectedMemberForProfile: UserData | null, 
+  setSelectedMemberForProfile: (u: UserData | null) => void,
+  setActiveTab: (tab: string) => void,
+  toast: any
+) {
+  switch (tab) {
     case 'dashboard': return <Dashboard user={user} setActiveTab={setActiveTab} />;
     case 'members': return <MembersView user={user} onSelectMember={(m) => { setSelectedMemberForProfile(m); setActiveTab('profile'); }} toast={toast} />;
     case 'deposit': return <DepositView user={user} settings={settings} toast={toast} />;
@@ -632,7 +661,6 @@ function getTabTitle(tab: string) {
       </div>
     );
     case 'audit': return <AuditView user={user} />;
-    case 'statement': return <StatementView user={user} toast={toast} />;
     case 'settings': {
       if (user.role !== 'super_admin' && user.email !== 'youngsterwelfarefoundationywf@gmail.com') return <Dashboard user={user} setActiveTab={setActiveTab} />;
       return <SettingsView user={user} onUpdate={refreshUser} setActiveTab={setActiveTab} toast={toast} />;
@@ -863,48 +891,49 @@ function Dashboard({ user, setActiveTab }: { user: UserData, setActiveTab: (tab:
            </div>
         </Card>
 
-        <Card title="কুইক অ্যাকশন">
-           <div className="grid grid-cols-2 gap-4">
-              <ActionButton icon={Users} label="সদস্য" onClick={() => setActiveTab('members')} color="bg-blue-500" />
-              <ActionButton icon={Receipt} label="খরচ" onClick={() => setActiveTab('expenses')} color="bg-brand-danger" />
-              <ActionButton icon={TrendingUp} label="বিনিয়োগ" onClick={() => setActiveTab('investments')} color="bg-brand-primary" />
-              <ActionButton icon={Settings} label="সেটিংস" onClick={() => setActiveTab('settings')} color="bg-slate-700" />
-           </div>
-        </Card>
-      </div>
-    </div>
-  );
-}
+        <div className="space-y-6">
+          <Card title="কুইক অ্যাকশন">
+             <div className="grid grid-cols-2 gap-4">
+                <ActionButton icon={Users} label="সদস্য" onClick={() => setActiveTab('members')} color="bg-blue-500" />
+                <ActionButton icon={Receipt} label="খরচ" onClick={() => setActiveTab('expenses')} color="bg-brand-danger" />
+                <ActionButton icon={TrendingUp} label="বিনিয়োগ" onClick={() => setActiveTab('investments')} color="bg-brand-primary" />
+                <ActionButton icon={Settings} label="সেটিংস" onClick={() => setActiveTab('settings')} color="bg-slate-700" />
+             </div>
+          </Card>
 
-function ActionButton({ icon: Icon, label, onClick, color }: any) {
-�ইটস</div>
+          <Card title="অ্যাক্টিভিটি হাইলাইটস">
             <div className="space-y-6">
-               <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                    <TrendingUp className="w-5 h-5 text-blue-500" />
-                    <span className="text-xs font-medium text-text-muted">সক্রিয় বিনিয়োগ</span>
-                  </div>
-                  <span className="text-xs font-black text-white">{stats.activeInvsCount}টি</span>
-               </div>
-               <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                    <Bell className="w-5 h-5 text-brand-info" />
-                    <span className="text-xs font-medium text-text-muted">পেন্ডিং রিকোয়েস্ট</span>
-                  </div>
-                  <span className="text-xs font-black text-white">{stats.pendingReqs}টি</span>
-               </div>
-               <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                    <Receipt className="w-5 h-5 text-brand-warning" />
-                    <span className="text-xs font-medium text-text-muted">অপারেশনাল খরচ</span>
-                  </div>
-                  <span className="text-xs font-black text-white">৳{fmt(stats.totExp)}</span>
-               </div>
-               <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
-                  <div className="h-full bg-brand-light" style={{ width: '70%' }} />
-               </div>
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <TrendingUp className="w-5 h-5 text-brand-primary" />
+                  <span className="text-xs font-black text-text-muted uppercase tracking-wider">সক্রিয় বিনিয়োগ</span>
+                </div>
+                <span className="text-sm font-black text-white">{stats.activeInvsCount}টি</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <Bell className="w-5 h-5 text-brand-info" />
+                  <span className="text-xs font-black text-text-muted uppercase tracking-wider">পেন্ডিং রিকোয়েস্ট</span>
+                </div>
+                <span className="text-sm font-black text-white">{stats.pendingReqs}টি</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <Receipt className="w-5 h-5 text-brand-warning" />
+                  <span className="text-xs font-black text-text-muted uppercase tracking-wider">অন্যান্য খরচ</span>
+                </div>
+                <span className="text-sm font-black text-white">৳{fmt(stats.totExp)}</span>
+              </div>
+              <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: '70%' }}
+                  className="h-full bg-brand-primary shadow-[0_0_10px_rgba(0,223,130,0.5)]" 
+                />
+              </div>
             </div>
-         </div>
+          </Card>
+        </div>
       </div>
     </div>
   );
