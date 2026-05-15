@@ -273,22 +273,50 @@ function App() {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session) {
-        fetchUserData(session.user.email!);
-      } else {
+    const checkSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error('Session error:', error.message);
+          if (error.message.toLowerCase().includes('refresh token')) {
+            await supabase.auth.signOut();
+            setSession(null);
+            setLoading(false);
+            return;
+          }
+        }
+        setSession(session);
+        if (session) {
+          fetchUserData(session.user.email!);
+        } else {
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error('Auth check error:', err);
         setLoading(false);
       }
-    });
+    };
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session) {
-        fetchUserData(session.user.email!);
-      } else {
+    checkSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT') {
+        setSession(null);
         setUserData(null);
         setLoading(false);
+      } else if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') {
+        setSession(session);
+        if (session) {
+          fetchUserData(session.user.email!);
+        }
+      } else {
+        setSession(session);
+        if (session) {
+          fetchUserData(session.user.email!);
+        } else {
+          setUserData(null);
+          setLoading(false);
+        }
       }
     });
 
@@ -301,12 +329,23 @@ function App() {
       const { data, error } = await supabase
         .from('ywf_users')
         .select('*')
-        .eq('email', email)
+        .eq('email', email.toLowerCase())
         .single();
 
       if (error) {
         console.warn('User data fetch error:', error.message);
-        setUserData(null);
+        // If it's the foundation email, we should still allow access as a fallback or create a profile
+        if (email.toLowerCase() === 'youngsterwelfarefoundationywf@gmail.com') {
+           setUserData({
+              id: session?.user?.id || '',
+              email: email.toLowerCase(),
+              full_name: 'Foundation Admin',
+              role: 'super_admin',
+              is_active: true
+           } as UserData);
+        } else {
+          setUserData(null);
+        }
       } else {
         setUserData(data);
       }
@@ -320,7 +359,19 @@ function App() {
 
   const refreshUser = () => {
     if (session?.user?.email) fetchUserData(session.user.email);
+    else setLoading(false);
   };
+
+  useEffect(() => {
+    // Safety timeout to prevent infinite loading
+    const timeout = setTimeout(() => {
+      if (loading) {
+        console.log('Loading timed out, forcing UI');
+        setLoading(false);
+      }
+    }, 10000);
+    return () => clearTimeout(timeout);
+  }, [loading]);
 
   if (loading) {
     return (
@@ -1214,29 +1265,29 @@ function FinesView({ user, settings, onSelectMember, toast }: { user: UserData, 
                     <div className={`text-sm font-black ${paid > 0 ? 'text-green-500' : 'text-text-muted'}`}>৳{fmt(paid)}</div>
                   </div>
                 </div>
-                {user.role !== 'member' && (
+                {(user.role !== 'member' || user.email === 'youngsterwelfarefoundationywf@gmail.com') && (
                   <div className="flex justify-end gap-2 pt-3 border-t border-white/5">
-                     <button 
-                        onClick={() => onSelectMember?.(m)}
-                        className="p-2 bg-blue-500/10 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition-all shadow-sm"
-                        title="এডিট"
-                     >
-                        <Edit2 className="w-3.5 h-3.5" />
-                     </button>
-                     <button 
-                        onClick={async () => {
-                           if (!window.confirm('আপনি কি নিশ্চিত যে এই সদস্যকে মুছে ফেলতে চান?')) return;
-                           const { error } = await supabase.from('ywf_users').delete().eq('id', m.id);
-                           if (!error) fetchData();
-                           else toast('ডিলিট করা যায়নি: ' + error.message, 'e');
-                        }}
-                        className="p-2 bg-brand-danger/10 text-brand-danger rounded-lg hover:bg-brand-danger hover:text-white transition-all shadow-sm"
-                        title="মুছে ফেলুন"
-                     >
-                        <Trash2 className="w-3.5 h-3.5" />
-                     </button>
-                  </div>
-                )}
+                         <button 
+                            onClick={() => onSelectMember?.(m)}
+                            className="p-2 bg-blue-500/10 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition-all shadow-sm"
+                            title="এডিট"
+                         >
+                            <Edit2 className="w-3.5 h-3.5" />
+                         </button>
+                         <button 
+                            onClick={async () => {
+                               if (!window.confirm('আপনি কি নিশ্চিত যে এই সদস্যকে মুছে ফেলতে চান?')) return;
+                               const { error } = await supabase.from('ywf_users').delete().eq('id', m.id);
+                               if (!error) fetchData();
+                               else toast('ডিলিট করা যায়নি: ' + error.message, 'e');
+                            }}
+                            className="p-2 bg-brand-danger/10 text-brand-danger rounded-lg hover:bg-brand-danger hover:text-white transition-all shadow-sm"
+                            title="মুছে ফেলুন"
+                         >
+                            <Trash2 className="w-3.5 h-3.5" />
+                         </button>
+                      </div>
+                    )}
               </div>
             );
           })}
@@ -1768,7 +1819,7 @@ function DepositView({ user, settings, toast }: { user: UserData, settings: any,
                   </div>
                   <div className="flex items-center gap-3">
                      <span className="text-xs font-black text-white">৳{fmt(t.amount)}</span>
-                     {user.role === 'super_admin' && (
+                     {(user.role === 'super_admin' || user.email === 'youngsterwelfarefoundationywf@gmail.com') && (
                        <button 
                          onClick={() => deleteTxn(t.id)}
                          className="p-1.5 text-text-dark hover:text-brand-danger bg-white/5 rounded-lg opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all"
@@ -2289,9 +2340,18 @@ function FinanceView({ user, type, title, toast }: { user: UserData, type: 'prof
     if (type === 'expense') table = 'ywf_expenses';
     if (type === 'investment') table = 'ywf_investments';
 
-    const { data } = await supabase.from(table).select('*').order('created_at', { ascending: false });
-    if (data) setData(data);
-    setLoading(false);
+    try {
+      const { data, error } = await supabase.from(table).select('*').order('created_at', { ascending: false });
+      if (error) {
+        console.error(`Fetch error for ${table}:`, error.message);
+        toast(`ডেটা লোড করতে সমস্যা হয়েছে: ${error.message}`, 'e');
+      }
+      if (data) setData(data);
+    } catch (err) {
+      console.error('Finance fetch exception:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAdd = async () => {
@@ -2416,7 +2476,7 @@ function FinanceView({ user, type, title, toast }: { user: UserData, type: 'prof
                       </span>
                    ) : <div />}
                    
-                    {user.role !== 'member' && (
+                    {(user.role !== 'member' || user.email === 'youngsterwelfarefoundationywf@gmail.com') && (
                       <div className="flex gap-2">
                          <button onClick={() => openEdit(x)} className="p-2 bg-blue-500/10 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition-all shadow-sm" title="সম্পাদনা">
                             <Edit2 className="w-3.5 h-3.5" />
@@ -2727,7 +2787,7 @@ function StatementView({ user, userId, toast }: { user: UserData, userId?: strin
                    <th className="px-6 py-4 text-[10px] font-black uppercase text-text-dark">বিবরণ</th>
                    <th className="px-6 py-4 text-[10px] font-black uppercase text-text-dark">মেথড</th>
                    <th className="px-6 py-4 text-[10px] font-black uppercase text-text-dark text-right">পরিমাণ</th>
-                   {user.role !== 'member' && <th className="px-6 py-4 text-[10px] font-black uppercase text-text-dark text-center">অ্যাকশন</th>}
+                   {(user.role !== 'member' || user.email === 'youngsterwelfarefoundationywf@gmail.com') && <th className="px-6 py-4 text-[10px] font-black uppercase text-text-dark text-center">অ্যাকশন</th>}
                 </tr>
              </thead>
              <tbody className="divide-y divide-white/5">
@@ -2742,11 +2802,11 @@ function StatementView({ user, userId, toast }: { user: UserData, userId?: strin
                       </td>
                       <td className="px-6 py-4 text-[10px] font-bold uppercase text-text-dark">{t.payment_method}</td>
                       <td className="px-6 py-4 text-right font-black text-white">৳{fmt(t.amount)}</td>
-                      {user.role !== 'member' && (
+                      {(user.role !== 'member' || user.email === 'youngsterwelfarefoundationywf@gmail.com') && (
                         <td className="px-6 py-4 text-center">
                            <div className="flex items-center justify-center gap-2">
-                              <button onClick={() => openEdit(t)} className="p-2 bg-blue-500/10 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition-all" title="সম্পাদনা"><Edit2 className="w-3.5 h-3.5" /></button>
-                              {user.role === 'super_admin' && <button onClick={() => handleDelete(t.id)} className="p-2 bg-brand-danger/10 text-brand-danger rounded-lg hover:bg-brand-danger hover:text-white transition-all" title="ডিলিট"><Trash2 className="w-3.5 h-3.5" /></button>}
+                              <button onClick={() => openEdit(t)} className="p-2 bg-blue-500/10 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition-all shadow-sm" title="সম্পাদনা"><Edit2 className="w-3.5 h-3.5" /></button>
+                              {(user.role === 'super_admin' || user.email === 'youngsterwelfarefoundationywf@gmail.com') && <button onClick={() => handleDelete(t.id)} className="p-2 bg-brand-danger/10 text-brand-danger rounded-lg hover:bg-brand-danger hover:text-white transition-all shadow-sm" title="ডিলিট"><Trash2 className="w-3.5 h-3.5" /></button>}
                            </div>
                         </td>
                       )}

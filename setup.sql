@@ -100,6 +100,18 @@ CREATE TABLE IF NOT EXISTS ywf_payment_requests (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Ensure columns exist if table was created earlier
+ALTER TABLE ywf_payment_requests ADD COLUMN IF NOT EXISTS month_year TEXT;
+ALTER TABLE ywf_payment_requests ADD COLUMN IF NOT EXISTS payment_method TEXT;
+ALTER TABLE ywf_payment_requests ADD COLUMN IF NOT EXISTS note TEXT;
+ALTER TABLE ywf_payment_requests ADD COLUMN IF NOT EXISTS processed_by UUID REFERENCES ywf_users(id);
+ALTER TABLE ywf_payment_requests ADD COLUMN IF NOT EXISTS processed_at TIMESTAMPTZ;
+
+-- Ensure financial tables have date column
+ALTER TABLE ywf_investments ADD COLUMN IF NOT EXISTS date DATE DEFAULT CURRENT_DATE;
+ALTER TABLE ywf_profits ADD COLUMN IF NOT EXISTS date DATE DEFAULT CURRENT_DATE;
+ALTER TABLE ywf_expenses ADD COLUMN IF NOT EXISTS date DATE DEFAULT CURRENT_DATE;
+
 -- 9. Audit Logs Table
 CREATE TABLE IF NOT EXISTS ywf_audit_log (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -121,6 +133,16 @@ INSERT INTO ywf_settings (key, value) VALUES
 ('admin_contact', '01XXXXXXXXX')
 ON CONFLICT (key) DO NOTHING;
 
+-- Grant super_admin role to the project owner
+DELETE FROM ywf_users WHERE email = 'youngsterwelfarefoundationywf@gmail.com';
+-- Note: The auth.users entry remains, we just ensure the ywf_users record is clean and updated if it exists
+-- But since we can't easily insert into ywf_users without a UUID from auth.users here,
+-- we'll rely on the app to upsert or just update if it exists.
+UPDATE ywf_users SET role = 'super_admin' WHERE email = 'youngsterwelfarefoundationywf@gmail.com';
+
+-- Refresh the PostgREST schema cache
+NOTIFY pgrst, 'reload schema';
+
 -- 10. Enable Row Level Security (RLS)
 ALTER TABLE ywf_users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ywf_settings ENABLE ROW LEVEL SECURITY;
@@ -134,51 +156,47 @@ ALTER TABLE ywf_audit_log ENABLE ROW LEVEL SECURITY;
 
 -- 11. Define Policies
 
+-- Security Definer Functions to avoid RLS recursion
+CREATE OR REPLACE FUNCTION get_my_role() RETURNS text AS $$
+  SELECT role FROM ywf_users WHERE id = auth.uid();
+$$ LANGUAGE sql STABLE SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION is_admin() RETURNS boolean AS $$
+  SELECT role IN ('admin', 'super_admin') FROM ywf_users WHERE id = auth.uid();
+$$ LANGUAGE sql STABLE SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION is_super_admin() RETURNS boolean AS $$
+  SELECT role = 'super_admin' FROM ywf_users WHERE id = auth.uid();
+$$ LANGUAGE sql STABLE SECURITY DEFINER;
+
 -- Policies for ywf_users: 
--- 1. Users can read their own profile
--- 2. Admins can read all profiles
--- 3. Only admins can update profiles
 CREATE POLICY "Users can view own profile" ON ywf_users FOR SELECT USING (auth.uid() = id);
-CREATE POLICY "Admins can view all profiles" ON ywf_users FOR SELECT USING (EXISTS (SELECT 1 FROM ywf_users WHERE id = auth.uid() AND role IN ('admin', 'super_admin')));
-CREATE POLICY "Admins can update profiles" ON ywf_users FOR UPDATE USING (EXISTS (SELECT 1 FROM ywf_users WHERE id = auth.uid() AND role IN ('admin', 'super_admin')));
+CREATE POLICY "Admins can view all profiles_v3" ON ywf_users FOR SELECT USING ( is_admin() );
+CREATE POLICY "Admins can update profiles_v3" ON ywf_users FOR UPDATE USING ( is_admin() );
 
 -- Policies for ywf_settings:
--- 1. Everyone can read settings
--- 2. Only super_admins can manage (INSERT, UPDATE, DELETE) settings
 CREATE POLICY "Settings are viewable by everyone" ON ywf_settings FOR SELECT USING (true);
-CREATE POLICY "Settings are manageable by super admins" ON ywf_settings FOR ALL 
-TO authenticated 
-USING ( (SELECT role FROM ywf_users WHERE id = auth.uid()) = 'super_admin' )
-WITH CHECK ( (SELECT role FROM ywf_users WHERE id = auth.uid()) = 'super_admin' );
+CREATE POLICY "Settings are manageable by super admins_v3" ON ywf_settings FOR ALL USING ( is_super_admin() );
 
 -- Policies for ywf_transactions:
--- 1. Users can read their own transactions
--- 2. Admins can manage all transactions
 CREATE POLICY "Users can read own transactions" ON ywf_transactions FOR SELECT USING (auth.uid() = member_id);
-CREATE POLICY "Admins can manage transactions" ON ywf_transactions FOR ALL USING (EXISTS (SELECT 1 FROM ywf_users WHERE id = auth.uid() AND role IN ('admin', 'super_admin')));
+CREATE POLICY "Admins can manage transactions_v3" ON ywf_transactions FOR ALL USING ( is_admin() );
 
 -- Policies for ywf_fines:
--- 1. Users can read their own fines
--- 2. Admins can manage all fines
 CREATE POLICY "Users can read own fines" ON ywf_fines FOR SELECT USING (auth.uid() = member_id);
-CREATE POLICY "Admins can manage fines" ON ywf_fines FOR ALL USING (EXISTS (SELECT 1 FROM ywf_users WHERE id = auth.uid() AND role IN ('admin', 'super_admin')));
+CREATE POLICY "Admins can manage fines_v3" ON ywf_fines FOR ALL USING ( is_admin() );
 
--- Policies for Financial Tables (Profits, Expenses, Investments):
--- 1. Admins and Super Admins can manage
--- 2. Members can view (optional, depending on your needs)
-CREATE POLICY "Admins can manage finance" ON ywf_profits FOR ALL USING (EXISTS (SELECT 1 FROM ywf_users WHERE id = auth.uid() AND role IN ('admin', 'super_admin')));
-CREATE POLICY "Admins can manage expenses" ON ywf_expenses FOR ALL USING (EXISTS (SELECT 1 FROM ywf_users WHERE id = auth.uid() AND role IN ('admin', 'super_admin')));
-CREATE POLICY "Admins can manage investments" ON ywf_investments FOR ALL USING (EXISTS (SELECT 1 FROM ywf_users WHERE id = auth.uid() AND role IN ('admin', 'super_admin')));
+-- Policies for Financial Tables:
+CREATE POLICY "Admins can manage finance_v3" ON ywf_profits FOR ALL USING ( is_admin() );
+CREATE POLICY "Admins can manage expenses_v3" ON ywf_expenses FOR ALL USING ( is_admin() );
+CREATE POLICY "Admins can manage investments_v3" ON ywf_investments FOR ALL USING ( is_admin() );
 CREATE POLICY "Members can view finance" ON ywf_profits FOR SELECT USING (true);
 CREATE POLICY "Members can view expenses" ON ywf_expenses FOR SELECT USING (true);
 CREATE POLICY "Members can view investments" ON ywf_investments FOR SELECT USING (true);
 
 -- Policies for ywf_payment_requests:
--- 1. Users can create and read their own requests
--- 2. Admins can read and update all requests
 CREATE POLICY "Users can handle own requests" ON ywf_payment_requests FOR ALL USING (auth.uid() = member_id);
-CREATE POLICY "Admins can manage all requests" ON ywf_payment_requests FOR ALL USING (EXISTS (SELECT 1 FROM ywf_users WHERE id = auth.uid() AND role IN ('admin', 'super_admin')));
+CREATE POLICY "Admins can manage all requests_v3" ON ywf_payment_requests FOR ALL USING ( is_admin() );
 
 -- Policies for ywf_audit_log:
--- 1. Only admins can read logs
-CREATE POLICY "Only admins can view logs" ON ywf_audit_log FOR SELECT USING (EXISTS (SELECT 1 FROM ywf_users WHERE id = auth.uid() AND role IN ('admin', 'super_admin')));
+CREATE POLICY "Only admins can view logs_v3" ON ywf_audit_log FOR SELECT USING ( is_admin() );
