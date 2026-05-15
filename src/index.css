@@ -4,20 +4,22 @@
 @theme {
   --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
   
-  --color-brand-primary: #0f4c2a;
-  --color-brand-light: #1a7a45;
-  --color-brand-accent: #f5a623;
+  --color-brand-primary: #00df82; /* Vibrant Green */
+  --color-brand-light: #00df82;
+  --color-brand-accent: #ff9f43; /* Warm Orange */
   --color-brand-danger: #ff4757;
   --color-brand-warning: #ffa502;
-  --color-brand-success: #2ed573;
+  --color-brand-success: #00df82;
   --color-brand-info: #1e90ff;
   
-  --color-bg-main: #060d0a;
-  --color-bg-secondary: #0d1a12;
+  --color-bg-main: #020604;   /* Almost Black-Green */
+  --color-bg-secondary: #0a120e; /* Slightly lighter base */
   
-  --color-text-primary: #e8f5ee;
-  --color-text-muted: #7a9a85;
+  --color-text-primary: #ffffff;
+  --color-text-muted: #8ba296;
   --color-text-dark: #4a6a55;
+  
+  --shadow-glow: 0 0 20px rgba(0, 223, 130, 0.15);
 }
 
 @layer base {

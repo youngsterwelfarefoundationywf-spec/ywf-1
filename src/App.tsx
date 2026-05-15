@@ -87,17 +87,17 @@ const Modal = ({ isOpen, onClose, title, children }: { isOpen: boolean, onClose:
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+          className="absolute inset-0 bg-black/90 backdrop-blur-md"
         />
         <motion.div 
-          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.9, y: 20 }}
-          className="relative bg-bg-secondary border border-white/10 rounded-3xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto"
+          exit={{ opacity: 0, scale: 0.95, y: 10 }}
+          className="relative bg-[#080d0a] border border-[#1a2e22] rounded-[2.5rem] p-8 w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-[0_0_50px_rgba(0,0,0,0.5)]"
         >
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-black">{title}</h3>
-            <button onClick={onClose} className="p-2 bg-white/5 rounded-xl text-text-muted hover:text-brand-danger transition-colors">
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="text-2xl font-black tracking-tight text-white">{title}</h3>
+            <button onClick={onClose} className="p-3 bg-white/5 rounded-2xl text-text-muted hover:text-white hover:bg-brand-danger/20 transition-all">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -109,31 +109,31 @@ const Modal = ({ isOpen, onClose, title, children }: { isOpen: boolean, onClose:
 );
 
 const Input = ({ label, icon: Icon, ...props }: { label: string, icon?: any } & React.InputHTMLAttributes<HTMLInputElement>) => (
-  <div className="space-y-1.5">
-    <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest ml-1">{label}</label>
+  <div className="space-y-2">
+    <label className="text-[10px] font-black text-text-muted uppercase tracking-[0.15em] ml-2">{label}</label>
     <div className="relative">
-      {Icon && <Icon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-dark" />}
+      {Icon && <Icon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-primary" />}
       <input 
         {...props}
-        className={`w-full bg-white/5 border border-white/10 rounded-2xl py-3 px-4 text-sm text-white outline-none focus:border-brand-light focus:bg-brand-light/5 transition-all ${Icon ? 'pl-11' : ''}`}
+        className={`w-full bg-[#0a120e] border border-[#1a2e22] rounded-2xl py-4 px-5 text-sm text-white outline-none focus:border-brand-primary/50 focus:bg-brand-primary/5 transition-all placeholder:text-text-dark ${Icon ? 'pl-12' : ''}`}
       />
     </div>
   </div>
 );
 
 const Select = ({ label, options, ...props }: { label: string, options: { value: string, label: string }[] } & React.SelectHTMLAttributes<HTMLSelectElement>) => (
-  <div className="space-y-1.5">
-    <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest ml-1">{label}</label>
+  <div className="space-y-2">
+    <label className="text-[10px] font-black text-text-muted uppercase tracking-[0.15em] ml-2">{label}</label>
     <div className="relative">
       <select 
         {...props}
-        className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 px-4 text-sm text-white outline-none focus:border-brand-light focus:bg-brand-light/5 transition-all appearance-none"
+        className="w-full bg-[#0a120e] border border-[#1a2e22] rounded-2xl py-4 px-5 text-sm text-white outline-none focus:border-brand-primary/50 focus:bg-brand-primary/5 transition-all appearance-none"
       >
         {options.map(opt => (
-          <option key={opt.value} value={opt.value} className="bg-bg-secondary">{opt.label}</option>
+          <option key={opt.value} value={opt.value} className="bg-[#0a120e] text-white py-2">{opt.label}</option>
         ))}
       </select>
-      <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-text-dark">
+      <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-text-dark">
         <ChevronRight className="w-4 h-4 rotate-90" />
       </div>
     </div>
@@ -157,17 +157,22 @@ const SidebarItem = ({
 }) => (
   <button 
     onClick={onClick}
-    className={`w-full flex items-center gap-3 px-4 py-3 transition-all relative group ${
+    className={`w-full flex items-center gap-3.5 px-6 py-4.5 transition-all relative group ${
       active 
-        ? 'bg-brand-light/15 text-green-400' 
-        : 'text-text-muted hover:bg-white/5 hover:text-text-primary'
+        ? 'text-brand-primary' 
+        : 'text-text-muted hover:text-white'
     }`}
   >
-    {active && <div className="absolute left-0 top-0 bottom-0 w-1 bg-brand-light rounded-r-full" />}
-    <Icon className={`w-4 h-4 ${active ? 'text-green-400' : 'group-hover:text-text-primary'}`} />
-    <span className="text-sm font-medium">{label}</span>
+    {active && (
+      <motion.div 
+        layoutId="sidebar-active"
+        className="absolute left-0 top-3 bottom-3 w-1 bg-brand-primary rounded-r-full shadow-[0_0_15px_rgba(0,223,130,0.5)]" 
+      />
+    )}
+    <Icon className={`w-4.5 h-4.5 transition-colors ${active ? 'text-brand-primary' : 'group-hover:text-white'}`} />
+    <span className={`text-[13px] font-black tracking-tight transition-colors ${active ? 'text-white' : ''}`}>{label}</span>
     {badge !== undefined && badge > 0 && (
-      <span className="ml-auto bg-brand-danger text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+      <span className="ml-auto bg-brand-danger text-white text-[9px] font-black px-1.5 py-0.5 rounded-full shadow-[0_0_10px_rgba(255,71,87,0.3)]">
         {badge}
       </span>
     )}
@@ -175,10 +180,10 @@ const SidebarItem = ({
 );
 
 const Card = ({ children, title, action, className = "" }: { children: React.ReactNode, title?: string, action?: React.ReactNode, className?: string }) => (
-  <div className={`bg-white/3 border border-white/7 rounded-2xl p-5 ${className}`}>
+  <div className={`bg-[#0a120e] border border-[#1a2e22] rounded-[2rem] p-7 shadow-sm ${className}`}>
     {(title || action) && (
-      <div className="flex items-center justify-between mb-4">
-        {title && <h3 className="font-bold text-sm tracking-tight">{title}</h3>}
+      <div className="flex items-center justify-between mb-6">
+        {title && <h3 className="font-black text-[11px] uppercase tracking-[0.2em] text-text-muted">{title}</h3>}
         {action}
       </div>
     )}
@@ -187,13 +192,14 @@ const Card = ({ children, title, action, className = "" }: { children: React.Rea
 );
 
 const StatCard = ({ icon: Icon, label, value, sub, colorClass }: { icon: any, label: string, value: string, sub: string, colorClass: string }) => (
-  <div className="bg-white/3 border border-white/7 rounded-2xl p-5 hover:translate-y-[-2px] transition-transform">
-    <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${colorClass}`}>
-      <Icon className="w-5 h-5" />
+  <div className="bg-[#0a120e] border border-[#1a2e22] rounded-[2rem] p-7 group hover:border-brand-primary/30 transition-all duration-500 relative overflow-hidden">
+    <div className="absolute top-0 right-0 w-32 h-32 bg-white/1 blur-[100px] pointer-events-none" />
+    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-6 shadow-inner ${colorClass}`}>
+      <Icon className="w-6 h-6" />
     </div>
-    <div className="text-[10px] text-text-muted font-semibold uppercase tracking-wider mb-1">{label}</div>
-    <div className="text-2xl font-black">{value}</div>
-    <div className="text-[10px] text-text-muted mt-1">{sub}</div>
+    <div className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] mb-2">{label}</div>
+    <div className="text-3xl font-black tracking-tight text-white mb-2">{value}</div>
+    <div className="text-[11px] font-bold text-text-dark tracking-tight">{sub}</div>
   </div>
 );
 
@@ -607,34 +613,7 @@ export default App;
 function getTabTitle(tab: string) {
   const titles: Record<string, string> = {
     dashboard: 'ড্যাশবোর্ড',
-    members: 'সদস্যগণ',
-    deposit: 'টাকা জমা',
-    requests: 'পেমেন্ট রিকোয়েস্ট',
-    investments: 'বিনিয়োগ',
-    profits: 'লাভ',
-    expenses: 'খরচ',
-    reports: 'রিপোর্ট',
-    audit: 'অডিট লগ',
-    settings: 'সেটিংস',
-    myStatement: 'আমার স্টেটমেন্ট',
-    payNow: 'পেমেন্ট করুন',
-    memberInv: 'বিনিয়োগ ও লাভ',
-    profile: 'আমার প্রোফাইল'
-  };
-  return titles[tab] || tab;
-}
-
-function renderTabContent(
-  tab: string, 
-  user: UserData, 
-  refreshUser: () => void, 
-  settings: any,
-  selectedMemberForProfile: UserData | null,
-  setSelectedMemberForProfile: (m: UserData | null) => void,
-  setActiveTab: (tab: string) => void,
-  toast: any
-) {
-  switch (tab) {
+    members: 'সদস্�  switch (tab) {
     case 'dashboard': return <Dashboard user={user} setActiveTab={setActiveTab} />;
     case 'members': return <MembersView user={user} onSelectMember={(m) => { setSelectedMemberForProfile(m); setActiveTab('profile'); }} toast={toast} />;
     case 'deposit': return <DepositView user={user} settings={settings} toast={toast} />;
@@ -655,7 +634,7 @@ function renderTabContent(
     case 'audit': return <AuditView user={user} />;
     case 'statement': return <StatementView user={user} toast={toast} />;
     case 'settings': {
-      if (user.role !== 'super_admin') return <Dashboard user={user} setActiveTab={setActiveTab} />;
+      if (user.role !== 'super_admin' && user.email !== 'youngsterwelfarefoundationywf@gmail.com') return <Dashboard user={user} setActiveTab={setActiveTab} />;
       return <SettingsView user={user} onUpdate={refreshUser} setActiveTab={setActiveTab} toast={toast} />;
     }
     default: return (
@@ -689,13 +668,12 @@ function Dashboard({ user, setActiveTab }: { user: UserData, setActiveTab: (tab:
         
         const txns = r1.data || [];
         const totDep = txns.filter(t => t.type === 'deposit').reduce((s, t) => s + Number(t.amount), 0);
-        const pendingFine = (r2.data || []).filter(f => (f.status === 'pending' && !f.is_paid)).reduce((s, f) => s + Number(f.amount), 0);
         
         const now = new Date();
         const mk = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
         const paidThisMonth = txns.some(t => t.type === 'deposit' && t.month_year === mk);
 
-        setStats({ totDep, pendingFine, paidThisMonth, pendingReqs: r3.data?.length || 0 });
+        setStats({ totDep, paidThisMonth, pendingReqs: r3.data?.length || 0 });
       } else {
         const [r1, r2, r3, r4, r5, r6, r7, r8] = await Promise.all([
           supabase.from('ywf_users').select('*').eq('role', 'member'),
@@ -708,39 +686,16 @@ function Dashboard({ user, setActiveTab }: { user: UserData, setActiveTab: (tab:
           supabase.from('ywf_transactions').select('id, amount, month_year, created_at, member:ywf_users(full_name)').eq('status', 'approved').eq('type', 'deposit').order('created_at', { ascending: false }).limit(5)
         ]);
 
-        const mem = r1.data || [], txns = r2.data || [], invs = r3.data || [], profs = r4.data || [], exps = r5.data || [], fins = r6.data || [];
-        
-        // totDep now includes all income (subscriptions + fines paid) from transactions table
+        const txns = r2.data || [], invs = r3.data || [], profs = r4.data || [], exps = r5.data || [];
         const totDep = txns.filter(t => t.type === 'deposit').reduce((s, t) => s + Number(t.amount), 0);
         const totInv = invs.reduce((s, i) => s + Number(i.amount), 0);
         const totProf = profs.reduce((s, p) => s + Number(p.amount), 0);
         const totExp = exps.reduce((s, e) => s + Number(e.amount), 0);
-        
-        // Fines collected is just the sum of transactions specifically marked as fines in requests (already in totDep)
-        // For stats, we show total paid fines and total pending fines
-        const paidFines = fins.filter(f => f.status === 'paid' || f.is_paid).reduce((s, f) => s + Number(f.amount), 0);
-        const pendingFines = fins.filter(f => f.status === 'pending' && !f.is_paid).reduce((s, f) => s + Number(f.amount), 0);
-        
         const activeInvsCount = invs.filter(i => i.status === 'active').length;
-        // Balance = (Income) - (Outgoings)
-        // Income = Member Payments (totDep) + Profits
-        // Outgoings = Investments + Expenses
         const currentBalance = (totDep + totProf) - (totInv + totExp);
         
-        // Members with pending fines
-        const pendingFinesByMember = fins
-          .filter(f => f.status === 'pending' && !f.is_paid)
-          .reduce((acc: any, f) => {
-            const memberId = f.member_id;
-            const memberName = mem.find((m: any) => m.id === memberId)?.full_name || 'সদস্য';
-            if (!acc[memberId]) acc[memberId] = { id: memberId, name: memberName, total: 0 };
-            acc[memberId].total += Number(f.amount);
-            return acc;
-          }, {});
-        const membersWithFines = Object.values(pendingFinesByMember).sort((a: any, b: any) => b.total - a.total).slice(0, 5);
-
         setRecentTxns(r8.data || []);
-        setStats({ totDep, totInv, totProf, totExp, paidFines, pendingFines, activeInvsCount, currentBalance, membersWithFines, pendingReqs: r7.count || 0 });
+        setStats({ totDep, totInv, totProf, totExp, activeInvsCount, currentBalance, pendingReqs: r7.count || 0 });
       }
     } catch (e) {
       console.error(e);
@@ -755,121 +710,174 @@ function Dashboard({ user, setActiveTab }: { user: UserData, setActiveTab: (tab:
     const now = new Date();
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <StatCard colorClass="bg-green-500/15 text-green-500" icon={PiggyBank} label="মোট জমা" value={`৳${fmt(stats.totDep)}`} sub="সদস্যদের চাঁদা" />
-          <StatCard 
-            colorClass={stats.paidThisMonth ? "bg-green-500/15 text-green-500" : "bg-brand-danger/15 text-brand-danger"} 
-            icon={stats.paidThisMonth ? CheckCircle : AlertTriangle} 
-            label="এই মাস" 
-            value={stats.paidThisMonth ? "✓ দেয়া হয়েছে" : "✗ বাকি"} 
-            sub={MB[now.getMonth()] + " " + now.getFullYear()} 
-          />
-          <StatCard colorClass="bg-blue-500/15 text-blue-500" icon={History} label="অপেক্ষামাণ" value={stats.pendingReqs.toString()} sub="পেমেন্ট রিকোয়েস্ট" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="md:col-span-2">
+            <StatCard colorClass="bg-brand-primary/10 text-brand-primary" icon={PiggyBank} label="আমার মোট জমা" value={`৳${fmt(stats.totDep)}`} sub="সংগঠনের তহবিলে আপনার অংশ" />
+          </div>
+          <div className="bg-[#0a120e] border border-[#1a2e22] rounded-[2.5rem] p-8 flex flex-col items-center justify-center text-center">
+             <div className="relative w-32 h-32 mb-6">
+                <svg className="w-full h-full transform -rotate-90">
+                   <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-white/5" />
+                   <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="12" fill="transparent" strokeDasharray={364.4} strokeDashoffset={stats.paidThisMonth ? 0 : 364.4} className="text-brand-primary transition-all duration-1000" />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                   {stats.paidThisMonth ? <CheckCircle className="w-10 h-10 text-brand-primary" /> : <XCircle className="w-10 h-10 text-brand-danger" />}
+                </div>
+             </div>
+             <div className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] mb-1">{MB[now.getMonth()]} পেমেন্ট</div>
+             <div className={`text-sm font-black ${stats.paidThisMonth ? 'text-brand-primary' : 'text-brand-danger'}`}>{stats.paidThisMonth ? 'পরিশোধিত' : 'বকেয়া'}</div>
+          </div>
         </div>
+
         {!stats.paidThisMonth && (
-           <div className="bg-brand-warning/10 border border-brand-warning/30 rounded-2xl p-4 flex items-center gap-3">
-              <AlertTriangle className="w-5 h-5 text-brand-warning" />
-              <div className="text-xs font-medium text-brand-warning flex-1">
-                 <strong>{MB[now.getMonth()]} মাসের</strong> চাঁদা এখনো দেওয়া হয়নি।
+           <motion.div 
+             initial={{ opacity: 0, y: 10 }}
+             animate={{ opacity: 1, y: 0 }}
+             className="bg-brand-accent/10 border border-brand-accent/20 rounded-3xl p-6 flex flex-col sm:flex-row items-center gap-4"
+           >
+              <div className="w-12 h-12 rounded-2xl bg-brand-accent/20 flex items-center justify-center text-brand-accent shrink-0">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div className="flex-1 text-center sm:text-left">
+                 <h4 className="text-sm font-black text-white">পেমেন্ট বাকি আছে !</h4>
+                 <p className="text-xs font-medium text-text-muted mt-0.5">আপনার {MB[now.getMonth()]} মাসের চাঁদা এখনো জমা দেওয়া হয়নি। অনুগ্রহ করে দ্রুত পরিশোধ করুন।</p>
               </div>
               <button 
                 onClick={() => setActiveTab('payNow')}
-                className="bg-brand-warning text-black px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider active:scale-95 transition-transform"
+                className="bg-brand-accent text-black px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-brand-accent/20"
               >
                 এখনই দিন
               </button>
-           </div>
+           </motion.div>
         )}
+
+        <Card title="সাম্প্রতিক এক্টিভিটি">
+           <div className="py-12 flex flex-col items-center justify-center opacity-20">
+              <History className="w-12 h-12 mb-2" />
+              <p className="text-[10px] font-black uppercase tracking-widest">শীঘ্রই আসছে</p>
+           </div>
+        </Card>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-           <div className="bg-bg-secondary border border-white/5 rounded-3xl p-6 relative overflow-hidden group">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/5 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-green-500/10 transition-all" />
-              <div className="flex items-center gap-3 mb-4">
-                 <div className="w-10 h-10 rounded-xl bg-green-500/15 flex items-center justify-center text-green-500">
-                    <Wallet className="w-5 h-5" />
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-8 bg-[#0a120e] border border-[#1a2e22] rounded-[2.5rem] p-8 relative overflow-hidden group">
+           <div className="absolute top-0 right-0 w-64 h-64 bg-brand-primary/5 rounded-full -mr-32 -mt-32 blur-[100px] pointer-events-none" />
+           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-12">
+              <div>
+                 <div className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] mb-2 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-brand-primary animate-pulse shadow-[0_0_10px_rgba(0,223,130,0.5)]" />
+                    বর্তমান ব্যালেন্স
                  </div>
-                 <div className="text-xs font-black text-text-muted uppercase tracking-widest">বর্তমান ক্যাশ</div>
+                 <div className="text-5xl font-black tracking-tighter text-white">৳{fmt(Math.abs(stats.currentBalance))}</div>
               </div>
-              <div className="text-3xl font-black text-white mb-1">৳{fmt(Math.abs(stats.currentBalance))}</div>
-              <div className="text-[10px] font-bold text-green-500/80 uppercase tracking-tight">(জমা+লভ্যাংশ)-(বিনিয়োগ+খরচ)</div>
+              <div className="flex gap-3">
+                 <button onClick={() => setActiveTab('requests')} className="bg-white/5 hover:bg-white/10 px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white transition-all border border-white/5">
+                    রিভিউ ({stats.pendingReqs})
+                 </button>
+              </div>
            </div>
 
-           <div className="bg-bg-secondary border border-white/5 rounded-3xl p-6 relative overflow-hidden group">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-blue-500/10 transition-all" />
-              <div className="flex items-center gap-3 mb-4">
-                 <div className="w-10 h-10 rounded-xl bg-blue-500/15 flex items-center justify-center text-blue-500">
-                    <History className="w-5 h-5" />
+           <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+              <div>
+                 <div className="flex justify-between items-end mb-2">
+                    <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">মোট আয়</span>
+                    <span className="text-xs font-black text-white">৳{fmt(stats.totDep + stats.totProf)}</span>
                  </div>
-                 <div className="text-xs font-black text-text-muted uppercase tracking-widest">অপেক্ষামাণ রিকোয়েস্ট</div>
+                 <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                    <div className="h-full bg-brand-primary shadow-[0_0_10px_rgba(0,223,130,0.5)]" style={{ width: '85%' }} />
+                 </div>
               </div>
-              <div className="text-3xl font-black text-white mb-1">{stats.pendingReqs}</div>
-              <div className="text-[10px] font-bold text-blue-500/80 uppercase tracking-tight">রিভিউ করতে হবে</div>
+              <div>
+                 <div className="flex justify-between items-end mb-2">
+                    <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">মোট ব্যয়</span>
+                    <span className="text-xs font-black text-white">৳{fmt(stats.totInv + stats.totExp)}</span>
+                 </div>
+                 <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                    <div className="h-full bg-brand-danger shadow-[0_0_10px_rgba(255,71,87,0.5)]" style={{ width: '45%' }} />
+                 </div>
+              </div>
+           </div>
+        </div>
+
+        <div className="lg:col-span-4 bg-brand-primary text-black rounded-[2.5rem] p-8 flex flex-col justify-between relative overflow-hidden group cursor-pointer active:scale-[0.98] transition-all" onClick={() => setActiveTab('requests')}>
+           <div className="absolute -right-8 -top-8 w-32 h-32 bg-black/10 rounded-full blur-2xl group-hover:scale-125 transition-transform duration-700" />
+           <div className="z-10">
+              <div className="w-12 h-12 rounded-2xl bg-black/10 flex items-center justify-center mb-6">
+                 <Bell className="w-6 h-6" />
+              </div>
+              <div className="text-[10px] font-black uppercase tracking-[0.2em] mb-1 opacity-60">পেন্ডিং পেমেন্ট</div>
+              <div className="text-4xl font-black tracking-tighter">{stats.pendingReqs}</div>
+           </div>
+           <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest z-10 pt-4">
+              যাচাই করুন <ChevronRight className="w-3 h-3" />
            </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard colorClass="bg-green-500/15 text-green-500" icon={PiggyBank} label="মোট জমা" value={`৳${fmt(stats.totDep)}`} sub="সদস্যদের চাঁদা" />
-        <StatCard colorClass="bg-brand-accent/15 text-brand-accent" icon={BarChart3} label="মোট লাভ" value={`৳${fmt(stats.totProf)}`} sub="বিনিয়োগ থেকে আয়" />
-        <StatCard colorClass="bg-blue-500/15 text-blue-500" icon={TrendingUp} label="মোট বিনিয়োগ" value={`৳${fmt(stats.totInv)}`} sub={`${stats.activeInvsCount} টি সক্রিয়`} />
-        <StatCard colorClass="bg-brand-danger/15 text-brand-danger" icon={Receipt} label="মোট খরচ" value={`৳${fmt(stats.totExp)}`} sub="অপারেশনাল খরচ" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard colorClass="bg-brand-primary/10 text-brand-primary" icon={PiggyBank} label="সদস্য চাঁদা" value={`৳${fmt(stats.totDep)}`} sub="সংগৃহীত চাঁদা" />
+        <StatCard colorClass="bg-brand-accent/10 text-brand-accent" icon={TrendingUp} label="ব্যবসায়িক লাভ" value={`৳${fmt(stats.totProf)}`} sub="বিনিয়োগ থেকে আয়" />
+        <StatCard colorClass="bg-blue-500/10 text-blue-500" icon={CircleDollarSign} label="মোট বিনিয়োগ" value={`৳${fmt(stats.totInv)}`} sub={`${stats.activeInvsCount}টি সক্রিয়`} />
+        <StatCard colorClass="bg-brand-danger/10 text-brand-danger" icon={Receipt} label="অন্যান্য খরচ" value={`৳${fmt(stats.totExp)}`} sub="অপারেশনাল খরচ" />
       </div>
 
-      <div className="grid grid-cols-1 gap-6">
-         <Card title="সাম্প্রতিক পেমেন্ট (চাঁদা)">
-            <div className="space-y-3">
-               {recentTxns.length > 0 ? recentTxns.map((t: any, i: number) => (
-                  <div key={t.id} className="flex items-center justify-between p-3 bg-white/3 border border-white/5 rounded-xl">
-                     <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-brand-light/10 text-brand-light flex items-center justify-center font-bold text-xs">
-                           {i + 1}
-                        </div>
-                        <div>
-                           <div className="text-xs font-bold text-white">{t.member?.full_name}</div>
-                           <div className="text-[9px] text-text-muted uppercase">{t.month_year ? (MB[parseInt(t.month_year.split('-')[1]) - 1] + ' ' + t.month_year.split('-')[0]) : fd(t.created_at)}</div>
-                        </div>
-                     </div>
-                     <div className="text-right">
-                        <div className="text-xs font-black text-brand-light">৳{fmt(t.amount)}</div>
-                        <div className="text-[8px] text-text-muted">{fd(t.created_at)}</div>
-                     </div>
-                  </div>
-               )) : (
-                  <div className="py-10 text-center opacity-20 text-xs font-bold uppercase tracking-widest">কোনো রেকর্ড নেই</div>
-               )}
-               {recentTxns.length > 0 && (
-                  <button 
-                    onClick={() => setActiveTab('reports')}
-                    className="w-full py-2 text-[10px] font-black uppercase text-brand-light hover:bg-brand-light/5 rounded-lg transition-colors mt-2"
-                  >
-                    সব লেনদেন দেখুন →
-                  </button>
-               )}
-            </div>
-         </Card>
-      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card title="সাম্প্রতিক লেনদেন" className="lg:col-span-2">
+           <div className="space-y-4">
+              {recentTxns.length > 0 ? recentTxns.map((t: any, i: number) => (
+                 <div key={t.id} className="flex items-center justify-between p-4 bg-white/2 hover:bg-white/5 border border-transparent hover:border-white/5 rounded-[1.5rem] transition-all group">
+                    <div className="flex items-center gap-4">
+                       <div className="w-10 h-10 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center text-[10px] font-black text-text-dark group-hover:text-brand-primary group-hover:border-brand-primary/30 transition-all">
+                          {String(i + 1).padStart(2, '0')}
+                       </div>
+                       <div>
+                          <div className="text-sm font-black text-white">{t.member?.full_name}</div>
+                          <div className="text-[10px] text-text-muted font-black uppercase tracking-widest mt-0.5">
+                             {t.month_year ? (MB[parseInt(t.month_year.split('-')[1]) - 1] + ' ' + t.month_year.split('-')[0]) : fd(t.created_at)}
+                          </div>
+                       </div>
+                    </div>
+                    <div className="text-right">
+                       <div className="text-base font-black text-brand-primary">৳{fmt(t.amount)}</div>
+                       <div className="text-[9px] text-text-dark font-black uppercase">{fd(t.created_at)}</div>
+                    </div>
+                 </div>
+              )) : (
+                 <div className="py-20 text-center opacity-20">
+                    <History className="w-16 h-16 mx-auto mb-2" />
+                    <p className="text-xs font-black uppercase tracking-widest">এখনো কোনো লেনদেন নেই</p>
+                 </div>
+              )}
+              {recentTxns.length > 0 && (
+                 <button 
+                   onClick={() => setActiveTab('reports')}
+                   className="w-full py-4 text-[10px] font-black uppercase tracking-[0.2em] text-text-muted hover:text-white transition-all mt-2"
+                 >
+                   সব রিপোর্ট দেখুন →
+                 </button>
+              )}
+           </div>
+        </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-         <div className="space-y-6">
-           <Card title="দ্রুত অ্যাকশন">
-              <div className="grid grid-cols-2 gap-3">
-                 <ActionButton icon={Users} label="সদস্য তালিকা" onClick={() => setActiveTab('members')} color="bg-blue-500" />
-                                  <ActionButton icon={Receipt} label="খরচ অ্যাড করুন" onClick={() => setActiveTab('expenses')} color="bg-brand-warning" />
-                 <ActionButton icon={TrendingUp} label="বিনিয়োগ অ্যাড" onClick={() => setActiveTab('investments')} color="bg-brand-light" />
-                 <ActionButton icon={Bell} label="পেমেন্ট রিকোয়েস্ট" onClick={() => setActiveTab('requests')} color="bg-brand-info" />
-                 <ActionButton icon={Settings} label="সিস্টেম সেটিংস" onClick={() => setActiveTab('settings')} color="bg-text-dark" />
-              </div>
-           </Card>
-         </div>
-         
-         <div className="bg-white/3 border border-white/7 rounded-3xl p-6 flex flex-col justify-center">
-            <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-4">আ্যর্টিভিটি হাইলাইটস</div>
+        <Card title="কুইক অ্যাকশন">
+           <div className="grid grid-cols-2 gap-4">
+              <ActionButton icon={Users} label="সদস্য" onClick={() => setActiveTab('members')} color="bg-blue-500" />
+              <ActionButton icon={Receipt} label="খরচ" onClick={() => setActiveTab('expenses')} color="bg-brand-danger" />
+              <ActionButton icon={TrendingUp} label="বিনিয়োগ" onClick={() => setActiveTab('investments')} color="bg-brand-primary" />
+              <ActionButton icon={Settings} label="সেটিংস" onClick={() => setActiveTab('settings')} color="bg-slate-700" />
+           </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function ActionButton({ icon: Icon, label, onClick, color }: any) {
+�ইটস</div>
             <div className="space-y-6">
                <div className="flex justify-between items-center">
                   <div className="flex items-center gap-3">
