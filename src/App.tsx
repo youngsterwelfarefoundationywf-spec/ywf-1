@@ -29,14 +29,17 @@ import {
   Image,
   PiggyBank,
   CheckCircle,
+  CheckCircle2,
   AlertTriangle,
+  AlertCircle,
   Info,
   Gavel,
   Edit2,
   Trash2,
   Trash,
   Save,
-  ShieldCheck
+  ShieldCheck,
+  FolderX
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -646,7 +649,12 @@ function renderTabContent(
     case 'investments': return <FinanceView user={user} type="investment" toast={toast} />;
     case 'profits': return <FinanceView user={user} type="profit" toast={toast} />;
     case 'expenses': return <FinanceView user={user} type="expense" toast={toast} />;
-    case 'memberInv': return <FinanceView user={user} type="profit" title="লভ্যাংশ রেকর্ড" toast={toast} />;
+    case 'memberInv': return (
+      <div className="space-y-8">
+        <FinanceView user={user} type="investment" title="ফাউন্ডেশন বিনিয়োগ" toast={toast} />
+        <FinanceView user={user} type="profit" title="লভ্যাংশ ট্র্যাকার" toast={toast} />
+      </div>
+    );
     case 'audit': return <AuditView user={user} />;
     case 'statement': return <StatementView user={user} toast={toast} />;
     case 'allFines': return <MyFinesView user={user} showAll setActiveTab={setActiveTab} toast={toast} />;
@@ -685,7 +693,7 @@ function Dashboard({ user, setActiveTab }: { user: UserData, setActiveTab: (tab:
         
         const txns = r1.data || [];
         const totDep = txns.filter(t => t.type === 'deposit').reduce((s, t) => s + Number(t.amount), 0);
-        const pendingFine = (r2.data || []).filter(f => f.status === 'pending').reduce((s, f) => s + Number(f.amount), 0);
+        const pendingFine = (r2.data || []).filter(f => (f.status === 'pending' && !f.is_paid)).reduce((s, f) => s + Number(f.amount), 0);
         
         const now = new Date();
         const mk = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -705,20 +713,30 @@ function Dashboard({ user, setActiveTab }: { user: UserData, setActiveTab: (tab:
         ]);
 
         const mem = r1.data || [], txns = r2.data || [], invs = r3.data || [], profs = r4.data || [], exps = r5.data || [], fins = r6.data || [];
+        
+        // totDep now includes all income (subscriptions + fines paid) from transactions table
         const totDep = txns.filter(t => t.type === 'deposit').reduce((s, t) => s + Number(t.amount), 0);
         const totInv = invs.reduce((s, i) => s + Number(i.amount), 0);
         const totProf = profs.reduce((s, p) => s + Number(p.amount), 0);
         const totExp = exps.reduce((s, e) => s + Number(e.amount), 0);
-        const totFine = fins.reduce((s, f) => s + Number(f.amount), 0);
+        
+        // Fines collected is just the sum of transactions specifically marked as fines in requests (already in totDep)
+        // For stats, we show total paid fines and total pending fines
+        const paidFines = fins.filter(f => f.status === 'paid' || f.is_paid).reduce((s, f) => s + Number(f.amount), 0);
+        const pendingFines = fins.filter(f => f.status === 'pending' && !f.is_paid).reduce((s, f) => s + Number(f.amount), 0);
+        
         const activeInvsCount = invs.filter(i => i.status === 'active').length;
-        const currentBalance = (totDep + totProf + totFine) - (totInv + totExp);
+        // Balance = (Income) - (Outgoings)
+        // Income = Member Payments (totDep) + Profits
+        // Outgoings = Investments + Expenses
+        const currentBalance = (totDep + totProf) - (totInv + totExp);
         
         // Members with pending fines
         const pendingFinesByMember = fins
-          .filter(f => f.status === 'pending')
+          .filter(f => f.status === 'pending' && !f.is_paid)
           .reduce((acc: any, f) => {
             const memberId = f.member_id;
-            const memberName = mem.find((m: any) => m.id === memberId)?.full_name || 'Unknown';
+            const memberName = mem.find((m: any) => m.id === memberId)?.full_name || 'সদস্য';
             if (!acc[memberId]) acc[memberId] = { id: memberId, name: memberName, total: 0 };
             acc[memberId].total += Number(f.amount);
             return acc;
@@ -726,7 +744,7 @@ function Dashboard({ user, setActiveTab }: { user: UserData, setActiveTab: (tab:
         const membersWithFines = Object.values(pendingFinesByMember).sort((a: any, b: any) => b.total - a.total).slice(0, 5);
 
         setRecentTxns(r8.data || []);
-        setStats({ totDep, totInv, totProf, totExp, totFine, activeInvsCount, currentBalance, membersWithFines, pendingReqs: r7.count || 0 });
+        setStats({ totDep, totInv, totProf, totExp, paidFines, pendingFines, activeInvsCount, currentBalance, membersWithFines, pendingReqs: r7.count || 0 });
       }
     } catch (e) {
       console.error(e);
@@ -742,7 +760,7 @@ function Dashboard({ user, setActiveTab }: { user: UserData, setActiveTab: (tab:
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard colorClass="bg-green-500/15 text-green-500" icon={PiggyBank} label="মোট জমা" value={`৳${fmt(stats.totDep)}`} sub="চাঁদা" />
+          <StatCard colorClass="bg-green-500/15 text-green-500" icon={PiggyBank} label="মোট জমা" value={`৳${fmt(stats.totDep)}`} sub="চাঁদা ও জরিমানা" />
           <StatCard 
             colorClass={stats.paidThisMonth ? "bg-green-500/15 text-green-500" : "bg-brand-danger/15 text-brand-danger"} 
             icon={stats.paidThisMonth ? CheckCircle : AlertTriangle} 
@@ -750,7 +768,7 @@ function Dashboard({ user, setActiveTab }: { user: UserData, setActiveTab: (tab:
             value={stats.paidThisMonth ? "✓ দেয়া হয়েছে" : "✗ বাকি"} 
             sub={MB[now.getMonth()] + " " + now.getFullYear()} 
           />
-          <StatCard colorClass="bg-brand-danger/15 text-brand-danger" icon={Info} label="বকেয়া জরিমানা" value={`৳${fmt(stats.pendingFine)}`} sub="এখনো দেয়া হয়নি" />
+          <StatCard colorClass="bg-brand-danger/15 text-brand-danger" icon={Info} label="বকেয়া জরিমানা" value={`৳${fmt(stats.pendingFine)}`} sub="এখনো দেয়া হয় নাই" />
           <StatCard colorClass="bg-blue-500/15 text-blue-500" icon={History} label="অপেক্ষামাণ" value={stats.pendingReqs.toString()} sub="পেমেন্ট রিকোয়েস্ট" />
         </div>
         {!stats.paidThisMonth && (
@@ -787,22 +805,64 @@ function Dashboard({ user, setActiveTab }: { user: UserData, setActiveTab: (tab:
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard colorClass="bg-green-500/15 text-green-500" icon={PiggyBank} label="মোট জমা (চাঁদা)" value={`৳${fmt(stats.totDep)}`} sub="সদস্যদের মোট চাঁদা" />
-        <StatCard colorClass="bg-blue-500/15 text-blue-500" icon={TrendingUp} label="মোট বিনিয়োগ" value={`৳${fmt(stats.totInv)}`} sub={`${stats.activeInvsCount} টি সক্রিয়`} />
-        <StatCard colorClass="bg-brand-accent/15 text-brand-accent" icon={BarChart3} label="মোট লাভ" value={`৳${fmt(stats.totProf)}`} sub="বিনিয়োগ থেকে আয়" />
-        <StatCard colorClass="bg-brand-danger/15 text-brand-danger" icon={Info} label="মোট জরিমানা" value={`৳${fmt(stats.totFine)}`} sub="সংগৃহীত জরিমানা" />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main Cash Flow */}
+        <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+           <div className="bg-bg-secondary border border-white/5 rounded-3xl p-6 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/5 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-green-500/10 transition-all" />
+              <div className="flex items-center gap-3 mb-4">
+                 <div className="w-10 h-10 rounded-xl bg-green-500/15 flex items-center justify-center text-green-500">
+                    <Wallet className="w-5 h-5" />
+                 </div>
+                 <div className="text-xs font-black text-text-muted uppercase tracking-widest">বর্তমান ক্যাশ</div>
+              </div>
+              <div className="text-3xl font-black text-white mb-1">৳{fmt(Math.abs(stats.currentBalance))}</div>
+              <div className="text-[10px] font-bold text-green-500/80 uppercase tracking-tight">(জমা+লাভ) - (বিনিয়োগ+খরচ)</div>
+           </div>
+
+           <div className="bg-bg-secondary border border-white/5 rounded-3xl p-6 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-blue-500/10 transition-all" />
+              <div className="flex items-center gap-3 mb-4">
+                 <div className="w-10 h-10 rounded-xl bg-blue-500/15 flex items-center justify-center text-blue-500">
+                    <History className="w-5 h-5" />
+                 </div>
+                 <div className="text-xs font-black text-text-muted uppercase tracking-widest">অপেক্ষামাণ রিকোয়েস্ট</div>
+              </div>
+              <div className="text-3xl font-black text-white mb-1">{stats.pendingReqs}</div>
+              <div className="text-[10px] font-bold text-blue-500/80 uppercase tracking-tight">রিভিউ করতে হবে</div>
+           </div>
+        </div>
+
+        {/* Fines Snapshot */}
+        <div className="bg-bg-secondary border border-white/5 rounded-3xl p-6">
+           <div className="flex items-center justify-between mb-4">
+              <div className="text-[10px] font-black text-text-dark uppercase tracking-widest">জরিমানা ট্র্যাকিং</div>
+              <Gavel className="w-4 h-4 text-brand-danger/50" />
+           </div>
+           <div className="space-y-4">
+              <div className="flex justify-between items-end border-b border-white/5 pb-3">
+                 <div>
+                    <div className="text-[10px] font-bold text-text-muted uppercase mb-1">মোট সংগৃহীত</div>
+                    <div className="text-xl font-bold text-green-500">৳{fmt(stats.paidFines)}</div>
+                 </div>
+                 <CheckCircle2 className="w-5 h-5 text-green-500 mb-1" />
+              </div>
+              <div className="flex justify-between items-end">
+                 <div>
+                    <div className="text-[10px] font-bold text-text-muted uppercase mb-1">মোট বকেয়া</div>
+                    <div className="text-xl font-bold text-brand-danger">৳{fmt(stats.pendingFines)}</div>
+                 </div>
+                 <AlertCircle className="w-5 h-5 text-brand-danger mb-1" />
+              </div>
+           </div>
+        </div>
       </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard colorClass="bg-green-500/15 text-green-500" icon={PiggyBank} label="মোট জমা" value={`৳${fmt(stats.totDep)}`} sub="সদস্যদের চাঁদা" />
+        <StatCard colorClass="bg-brand-accent/15 text-brand-accent" icon={BarChart3} label="মোট লাভ" value={`৳${fmt(stats.totProf)}`} sub="বিনিয়োগ থেকে আয়" />
+        <StatCard colorClass="bg-blue-500/15 text-blue-500" icon={TrendingUp} label="মোট বিনিয়োগ" value={`৳${fmt(stats.totInv)}`} sub={`${stats.activeInvsCount} টি সক্রিয়`} />
         <StatCard colorClass="bg-brand-danger/15 text-brand-danger" icon={Receipt} label="মোট খরচ" value={`৳${fmt(stats.totExp)}`} sub="অপারেশনাল খরচ" />
-        <StatCard 
-           colorClass={stats.currentBalance >= 0 ? "bg-green-500/15 text-green-500" : "bg-brand-danger/15 text-brand-danger"} 
-           icon={Wallet} 
-           label="বর্তমান স্থিতি" 
-           value={`৳${fmt(Math.abs(stats.currentBalance))}`} 
-           sub="(চাঁদা+লাভ+জরিমানা)-(বিনিয়োগ+খরচ)" 
-        />
-        <StatCard colorClass="bg-blue-500/15 text-blue-500" icon={History} label="অপেক্ষামাণ" value={stats.pendingReqs.toString()} sub="রিকোয়েস্ট রিভিউ" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -2379,6 +2439,7 @@ function FinanceView({ user, type, title, toast }: { user: UserData, type: 'prof
 
     try {
       if (editingItem) {
+        // Update specific table
         const { error } = await supabase.from(table).update({
           amount: cleanAmount,
           note,
@@ -2387,6 +2448,15 @@ function FinanceView({ user, type, title, toast }: { user: UserData, type: 'prof
         }).eq('id', editingItem.id);
 
         if (error) throw error;
+
+        // Also update transactions ledger
+        await supabase.from('ywf_transactions').update({
+          amount: cleanAmount,
+          note,
+          date,
+          month_year: date.slice(0, 7)
+        }).eq('ref_id', editingItem.id);
+
         toast('সফলভাবে আপডেট করা হয়েছে', 's');
         setIsModalOpen(false);
         setEditingItem(null);
@@ -2399,9 +2469,23 @@ function FinanceView({ user, type, title, toast }: { user: UserData, type: 'prof
         };
         if (type === 'investment') payload.status = 'active';
         
-        const { error } = await supabase.from(table).insert(payload);
+        const { data: inserted, error } = await supabase.from(table).insert(payload).select().single();
 
         if (error) throw error;
+
+        // Also add to transactions ledger for master reporting
+        if (inserted) {
+          await supabase.from('ywf_transactions').insert({
+            amount: cleanAmount,
+            type: type,
+            note: note,
+            date: date,
+            ref_id: inserted.id,
+            month_year: date.slice(0, 7), // YYYY-MM
+            status: 'approved'
+          });
+        }
+
         toast('সফলভাবে যোগ করা হয়েছে', 's');
         setIsModalOpen(false);
         fetchData();
@@ -2419,12 +2503,18 @@ function FinanceView({ user, type, title, toast }: { user: UserData, type: 'prof
     if (type === 'expense') table = 'ywf_expenses';
     if (type === 'investment') table = 'ywf_investments';
 
-    const { error } = await supabase.from(table).delete().eq('id', id);
-    if (!error) {
+    try {
+      // Delete from specific table
+      const { error } = await supabase.from(table).delete().eq('id', id);
+      if (error) throw error;
+
+      // Also delete from transactions ledger
+      await supabase.from('ywf_transactions').delete().eq('ref_id', id);
+
       toast('মুছে ফেলা হয়েছে', 's');
       fetchData();
-    } else {
-      toast('ডিলিট করা যায়নি: ' + error.message, 'e');
+    } catch (err: any) {
+      toast('ডিলিট করা যায়নি: ' + err.message, 'e');
     }
   };
 
@@ -2470,7 +2560,7 @@ function FinanceView({ user, type, title, toast }: { user: UserData, type: 'prof
        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {data.map((x, i) => (
              <div key={x.id}>
-               <Card className="hover:bg-white/5 transition-all group h-full relative">
+                <Card className={`hover:bg-white/5 transition-all group h-full relative border-t-2 ${type === 'expense' ? 'border-t-brand-danger/20' : type === 'profit' ? 'border-t-green-500/20' : 'border-t-blue-500/20'}`}>
                 <div className="flex justify-between items-start mb-3">
                    <div className="flex items-center gap-3">
                       <div className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center text-[10px] font-black text-text-muted">
@@ -2842,7 +2932,10 @@ function StatementView({ user, userId, toast }: { user: UserData, userId?: strin
                       {!userId && <td className="px-6 py-4 font-bold text-white">{t.member?.full_name}</td>}
                       <td className="px-6 py-4">
                          <div className="font-bold text-white">{t.month_year ? (MB[parseInt(t.month_year.split('-')[1]) - 1] + ' ' + t.month_year.split('-')[0]) : fd(t.created_at)}</div>
-                         <div className="text-[10px] text-text-dark uppercase">{t.type === 'deposit' ? 'চাঁদা' : 'অন্যান্য'}</div>
+                         <div className="text-[10px] text-text-dark uppercase">{t.type === 'deposit' ? 'চাঁদা' : 
+                             t.type === 'profit' ? 'লভ্যাংশ' : 
+                             t.type === 'expense' ? 'খরচ' : 
+                             t.type === 'investment' ? 'বিনিয়োগ' : 'অন্যান্য'}</div>
                       </td>
                       <td className="px-6 py-4 text-[10px] font-bold uppercase text-text-dark">{t.payment_method}</td>
                       <td className="px-6 py-4 text-right font-black text-white">৳{fmt(t.amount)}</td>

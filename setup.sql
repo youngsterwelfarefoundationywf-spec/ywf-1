@@ -32,10 +32,12 @@ CREATE TABLE IF NOT EXISTS ywf_transactions (
     member_id UUID REFERENCES ywf_users(id) ON DELETE CASCADE,
     amount DECIMAL NOT NULL,
     type TEXT NOT NULL CHECK (type IN ('deposit', 'profit', 'expense', 'investment')),
+    date DATE DEFAULT CURRENT_DATE,
     month_year TEXT, -- YYYY-MM
     payment_method TEXT,
     status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
     note TEXT,
+    ref_id UUID,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
