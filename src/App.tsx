@@ -1514,7 +1514,7 @@ function MembersView({ user, onSelectMember, toast }: { user: UserData, onSelect
                className="w-full bg-white/5 border border-white/10 rounded-2xl py-2.5 pl-11 pr-4 text-sm outline-none focus:border-brand-light transition-all"
              />
           </div>
-          {user.role === 'super_admin' && (
+          {(user.role === 'super_admin' || user.email === 'youngsterwelfarefoundationywf@gmail.com') && (
             <button 
               onClick={() => setIsModalOpen(true)}
               className="w-full sm:w-auto bg-brand-light hover:bg-brand-primary text-white px-6 py-2.5 rounded-2xl text-sm font-black flex items-center justify-center gap-2 shadow-lg shadow-brand-light/20 transition-all active:scale-95"
@@ -1559,7 +1559,7 @@ function MembersView({ user, onSelectMember, toast }: { user: UserData, onSelect
                     >
                       <Edit2 className="w-3.5 h-3.5" />
                     </button>
-                    {user.role === 'super_admin' && (
+                    {(user.role === 'super_admin' || user.email === 'youngsterwelfarefoundationywf@gmail.com') && (
                       <button 
                         onClick={async (e) => {
                           e.stopPropagation();
@@ -1839,7 +1839,7 @@ function DepositView({ user, settings, toast }: { user: UserData, settings: any,
 
 function ProfileView({ user, targetUser, onUpdate, toast }: { user: UserData, targetUser?: UserData | null, onUpdate: () => void, toast: any }) {
   const displayUser = targetUser || user;
-  const isAdminEdit = targetUser !== null && targetUser !== undefined && user.role !== 'member';
+  const isAdminEdit = targetUser !== null && targetUser !== undefined && (user.role !== 'member' || user.email === 'youngsterwelfarefoundationywf@gmail.com');
 
   const [fullName, setFullName] = useState(displayUser.full_name || '');
   const [phone, setPhone] = useState(displayUser.phone || '');
@@ -2448,7 +2448,7 @@ function FinanceView({ user, type, title, toast }: { user: UserData, type: 'prof
             <h2 className="text-xl font-black">{gT()}</h2>
             <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">মোট: ৳{fmt(data.reduce((s, x) => s + x.amount, 0))}</p>
           </div>
-          {user.role !== 'member' && (
+          {(user.role !== 'member' || user.email === 'youngsterwelfarefoundationywf@gmail.com') && (
             <button onClick={openNew} className="bg-brand-light text-white px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 transition-all active:scale-95">
                <Plus className="w-4 h-4" /> নতুন এন্ট্রি
             </button>

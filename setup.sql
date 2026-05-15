@@ -100,12 +100,24 @@ CREATE TABLE IF NOT EXISTS ywf_payment_requests (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Ensure columns exist if table was created earlier
+-- Ensure columns exist if tables were created earlier
+ALTER TABLE ywf_users ADD COLUMN IF NOT EXISTS nid_number TEXT;
+ALTER TABLE ywf_users ADD COLUMN IF NOT EXISTS nid_photo_url TEXT;
+ALTER TABLE ywf_users ADD COLUMN IF NOT EXISTS dob DATE;
+ALTER TABLE ywf_users ADD COLUMN IF NOT EXISTS address TEXT;
+ALTER TABLE ywf_users ADD COLUMN IF NOT EXISTS photo_url TEXT;
+
+ALTER TABLE ywf_payment_requests ADD COLUMN IF NOT EXISTS type TEXT CHECK (type IN ('deposit', 'fine'));
 ALTER TABLE ywf_payment_requests ADD COLUMN IF NOT EXISTS month_year TEXT;
 ALTER TABLE ywf_payment_requests ADD COLUMN IF NOT EXISTS payment_method TEXT;
 ALTER TABLE ywf_payment_requests ADD COLUMN IF NOT EXISTS note TEXT;
 ALTER TABLE ywf_payment_requests ADD COLUMN IF NOT EXISTS processed_by UUID REFERENCES ywf_users(id);
 ALTER TABLE ywf_payment_requests ADD COLUMN IF NOT EXISTS processed_at TIMESTAMPTZ;
+
+ALTER TABLE ywf_fines ADD COLUMN IF NOT EXISTS reason TEXT;
+ALTER TABLE ywf_fines ADD COLUMN IF NOT EXISTS is_paid BOOLEAN DEFAULT false;
+ALTER TABLE ywf_fines ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ;
+ALTER TABLE ywf_fines ADD COLUMN IF NOT EXISTS month_year TEXT;
 
 -- Ensure financial tables have date column
 ALTER TABLE ywf_investments ADD COLUMN IF NOT EXISTS date DATE DEFAULT CURRENT_DATE;
