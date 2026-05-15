@@ -33,13 +33,14 @@ import {
   AlertTriangle,
   AlertCircle,
   Info,
-  Gavel,
   Edit2,
   Trash2,
   Trash,
   Save,
   ShieldCheck,
-  FolderX
+  FolderX,
+  Calendar,
+  Filter
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -441,7 +442,6 @@ function App() {
               <div className="px-4 pb-2 text-[10px] font-bold text-text-dark uppercase tracking-widest">প্রধান</div>
               <SidebarItem icon={LayoutDashboard} label="ড্যাশবোর্ড" active={activeTab === 'dashboard'} onClick={() => { setActiveTab('dashboard'); setSelectedMemberForProfile(null); setSidebarOpen(false); }} />
               <SidebarItem icon={Users} label="সদস্যগণ" active={activeTab === 'members'} onClick={() => { setActiveTab('members'); setSelectedMemberForProfile(null); setSidebarOpen(false); }} />
-              <SidebarItem icon={Gavel} label="জরিমানা" active={activeTab === 'fines'} onClick={() => { setActiveTab('fines'); setSelectedMemberForProfile(null); setSidebarOpen(false); }} />
               <SidebarItem icon={Wallet} label="টাকা জমা" active={activeTab === 'deposit'} onClick={() => { setActiveTab('deposit'); setSelectedMemberForProfile(null); setSidebarOpen(false); }} />
               <SidebarItem icon={Bell} label="পেমেন্ট রিকোয়েস্ট" active={activeTab === 'requests'} onClick={() => { setActiveTab('requests'); setSelectedMemberForProfile(null); setSidebarOpen(false); }} badge={pendingRequestsCount} />
               
@@ -461,7 +461,6 @@ function App() {
             <>
               <div className="px-4 pb-2 text-[10px] font-bold text-text-dark uppercase tracking-widest">আমার একাউন্ট</div>
               <SidebarItem icon={LayoutDashboard} label="ড্যাশবোর্ড" active={activeTab === 'dashboard'} onClick={() => { setActiveTab('dashboard'); setSelectedMemberForProfile(null); setSidebarOpen(false); }} />
-              <SidebarItem icon={Gavel} label="আমার জরিমানা" active={activeTab === 'myFines'} onClick={() => { setActiveTab('myFines'); setSelectedMemberForProfile(null); setSidebarOpen(false); }} />
               <SidebarItem icon={FileText} label="আমার স্টেটমেন্ট" active={activeTab === 'myStatement'} onClick={() => { setActiveTab('myStatement'); setSelectedMemberForProfile(null); setSidebarOpen(false); }} />
               <SidebarItem icon={CreditCard} label="পেমেন্ট করুন" active={activeTab === 'payNow'} onClick={() => { setActiveTab('payNow'); setSelectedMemberForProfile(null); setSidebarOpen(false); }} />
               <SidebarItem icon={TrendingUp} label="বিনিয়োগ ও লাভ" active={activeTab === 'memberInv'} onClick={() => { setActiveTab('memberInv'); setSelectedMemberForProfile(null); setSidebarOpen(false); }} />
@@ -638,8 +637,6 @@ function renderTabContent(
   switch (tab) {
     case 'dashboard': return <Dashboard user={user} setActiveTab={setActiveTab} />;
     case 'members': return <MembersView user={user} onSelectMember={(m) => { setSelectedMemberForProfile(m); setActiveTab('profile'); }} toast={toast} />;
-    case 'fines': return <FinesView user={user} settings={settings} onSelectMember={(m) => { setSelectedMemberForProfile(m); setActiveTab('profile'); }} toast={toast} />;
-    case 'myFines': return <MyFinesView user={user} setActiveTab={setActiveTab} toast={toast} />;
     case 'deposit': return <DepositView user={user} settings={settings} toast={toast} />;
     case 'profile': return <ProfileView user={user} targetUser={selectedMemberForProfile} onUpdate={() => { refreshUser(); setSelectedMemberForProfile(null); if(selectedMemberForProfile) setActiveTab('members'); }} toast={toast} />;
     case 'requests': return <PaymentRequestsView user={user} toast={toast} />;
@@ -657,7 +654,6 @@ function renderTabContent(
     );
     case 'audit': return <AuditView user={user} />;
     case 'statement': return <StatementView user={user} toast={toast} />;
-    case 'allFines': return <MyFinesView user={user} showAll setActiveTab={setActiveTab} toast={toast} />;
     case 'settings': {
       if (user.role !== 'super_admin') return <Dashboard user={user} setActiveTab={setActiveTab} />;
       return <SettingsView user={user} onUpdate={refreshUser} setActiveTab={setActiveTab} toast={toast} />;
@@ -753,14 +749,14 @@ function Dashboard({ user, setActiveTab }: { user: UserData, setActiveTab: (tab:
     }
   };
 
-  if (loading) return <div className="flex justify-center py-20"><div className="sp" /></div>;
+  if (loading || !stats) return <div className="flex justify-center py-20"><div className="sp" /></div>;
 
   if (user.role === 'member') {
     const now = new Date();
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard colorClass="bg-green-500/15 text-green-500" icon={PiggyBank} label="মোট জমা" value={`৳${fmt(stats.totDep)}`} sub="চাঁদা ও জরিমানা" />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <StatCard colorClass="bg-green-500/15 text-green-500" icon={PiggyBank} label="মোট জমা" value={`৳${fmt(stats.totDep)}`} sub="সদস্যদের চাঁদা" />
           <StatCard 
             colorClass={stats.paidThisMonth ? "bg-green-500/15 text-green-500" : "bg-brand-danger/15 text-brand-danger"} 
             icon={stats.paidThisMonth ? CheckCircle : AlertTriangle} 
@@ -768,7 +764,6 @@ function Dashboard({ user, setActiveTab }: { user: UserData, setActiveTab: (tab:
             value={stats.paidThisMonth ? "✓ দেয়া হয়েছে" : "✗ বাকি"} 
             sub={MB[now.getMonth()] + " " + now.getFullYear()} 
           />
-          <StatCard colorClass="bg-brand-danger/15 text-brand-danger" icon={Info} label="বকেয়া জরিমানা" value={`৳${fmt(stats.pendingFine)}`} sub="এখনো দেয়া হয় নাই" />
           <StatCard colorClass="bg-blue-500/15 text-blue-500" icon={History} label="অপেক্ষামাণ" value={stats.pendingReqs.toString()} sub="পেমেন্ট রিকোয়েস্ট" />
         </div>
         {!stats.paidThisMonth && (
@@ -785,29 +780,14 @@ function Dashboard({ user, setActiveTab }: { user: UserData, setActiveTab: (tab:
               </button>
            </div>
         )}
-        {stats.pendingFine > 0 && (
-           <div className="bg-brand-danger/10 border border-brand-danger/30 rounded-2xl p-4 flex items-center gap-3">
-              <AlertTriangle className="w-5 h-5 text-brand-danger" />
-              <div className="text-xs font-medium text-brand-danger flex-1">
-                 আপনার <strong>৳{fmt(stats.pendingFine)}</strong> জরিমানা বকেয়া আছে।
-              </div>
-              <button 
-                onClick={() => setActiveTab('myFines')}
-                className="bg-brand-danger text-white px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider active:scale-95 transition-transform"
-              >
-                বিস্তারিত দেখুন
-              </button>
-           </div>
-        )}
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Cash Flow */}
-        <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
            <div className="bg-bg-secondary border border-white/5 rounded-3xl p-6 relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/5 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-green-500/10 transition-all" />
               <div className="flex items-center gap-3 mb-4">
@@ -817,7 +797,7 @@ function Dashboard({ user, setActiveTab }: { user: UserData, setActiveTab: (tab:
                  <div className="text-xs font-black text-text-muted uppercase tracking-widest">বর্তমান ক্যাশ</div>
               </div>
               <div className="text-3xl font-black text-white mb-1">৳{fmt(Math.abs(stats.currentBalance))}</div>
-              <div className="text-[10px] font-bold text-green-500/80 uppercase tracking-tight">(জমা+লাভ) - (বিনিয়োগ+খরচ)</div>
+              <div className="text-[10px] font-bold text-green-500/80 uppercase tracking-tight">(জমা+লভ্যাংশ)-(বিনিয়োগ+খরচ)</div>
            </div>
 
            <div className="bg-bg-secondary border border-white/5 rounded-3xl p-6 relative overflow-hidden group">
@@ -832,30 +812,6 @@ function Dashboard({ user, setActiveTab }: { user: UserData, setActiveTab: (tab:
               <div className="text-[10px] font-bold text-blue-500/80 uppercase tracking-tight">রিভিউ করতে হবে</div>
            </div>
         </div>
-
-        {/* Fines Snapshot */}
-        <div className="bg-bg-secondary border border-white/5 rounded-3xl p-6">
-           <div className="flex items-center justify-between mb-4">
-              <div className="text-[10px] font-black text-text-dark uppercase tracking-widest">জরিমানা ট্র্যাকিং</div>
-              <Gavel className="w-4 h-4 text-brand-danger/50" />
-           </div>
-           <div className="space-y-4">
-              <div className="flex justify-between items-end border-b border-white/5 pb-3">
-                 <div>
-                    <div className="text-[10px] font-bold text-text-muted uppercase mb-1">মোট সংগৃহীত</div>
-                    <div className="text-xl font-bold text-green-500">৳{fmt(stats.paidFines)}</div>
-                 </div>
-                 <CheckCircle2 className="w-5 h-5 text-green-500 mb-1" />
-              </div>
-              <div className="flex justify-between items-end">
-                 <div>
-                    <div className="text-[10px] font-bold text-text-muted uppercase mb-1">মোট বকেয়া</div>
-                    <div className="text-xl font-bold text-brand-danger">৳{fmt(stats.pendingFines)}</div>
-                 </div>
-                 <AlertCircle className="w-5 h-5 text-brand-danger mb-1" />
-              </div>
-           </div>
-        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -865,7 +821,7 @@ function Dashboard({ user, setActiveTab }: { user: UserData, setActiveTab: (tab:
         <StatCard colorClass="bg-brand-danger/15 text-brand-danger" icon={Receipt} label="মোট খরচ" value={`৳${fmt(stats.totExp)}`} sub="অপারেশনাল খরচ" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6">
          <Card title="সাম্প্রতিক পেমেন্ট (চাঁদা)">
             <div className="space-y-3">
                {recentTxns.length > 0 ? recentTxns.map((t: any, i: number) => (
@@ -897,35 +853,6 @@ function Dashboard({ user, setActiveTab }: { user: UserData, setActiveTab: (tab:
                )}
             </div>
          </Card>
-
-         <Card title="বকেয়া জরিমানা (শীর্ষ ৫)">
-            <div className="space-y-3">
-               {stats.membersWithFines.length > 0 ? stats.membersWithFines.map((m: any, i: number) => (
-                  <div key={m.id} className="flex items-center justify-between p-3 bg-brand-danger/5 border border-brand-danger/10 rounded-xl">
-                     <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-brand-danger/10 text-brand-danger flex items-center justify-center font-bold text-xs">
-                           {i + 1}
-                        </div>
-                        <div className="text-xs font-bold text-white">{m.name}</div>
-                     </div>
-                     <div className="text-right">
-                        <div className="text-xs font-black text-brand-danger">৳{fmt(m.total)}</div>
-                        <div className="text-[8px] text-text-muted">বকেয়া পরিমাণ</div>
-                     </div>
-                  </div>
-               )) : (
-                  <div className="py-10 text-center opacity-20 text-xs font-bold uppercase tracking-widest">কোনো বকেয়া জরিমানা নেই</div>
-               )}
-               {stats.membersWithFines.length > 0 && (
-                  <button 
-                    onClick={() => setActiveTab('fines')}
-                    className="w-full py-2 text-[10px] font-black uppercase text-brand-danger hover:bg-brand-danger/5 rounded-lg transition-colors mt-2"
-                  >
-                    সব জরিমানা পরিচালনা করুন →
-                  </button>
-               )}
-            </div>
-         </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -933,8 +860,7 @@ function Dashboard({ user, setActiveTab }: { user: UserData, setActiveTab: (tab:
            <Card title="দ্রুত অ্যাকশন">
               <div className="grid grid-cols-2 gap-3">
                  <ActionButton icon={Users} label="সদস্য তালিকা" onClick={() => setActiveTab('members')} color="bg-blue-500" />
-                 <ActionButton icon={Gavel} label="জরিমানা ইস্যু" onClick={() => setActiveTab('fines')} color="bg-brand-danger" />
-                 <ActionButton icon={Receipt} label="খরচ অ্যাড করুন" onClick={() => setActiveTab('expenses')} color="bg-brand-warning" />
+                                  <ActionButton icon={Receipt} label="খরচ অ্যাড করুন" onClick={() => setActiveTab('expenses')} color="bg-brand-warning" />
                  <ActionButton icon={TrendingUp} label="বিনিয়োগ অ্যাড" onClick={() => setActiveTab('investments')} color="bg-brand-light" />
                  <ActionButton icon={Bell} label="পেমেন্ট রিকোয়েস্ট" onClick={() => setActiveTab('requests')} color="bg-brand-info" />
                  <ActionButton icon={Settings} label="সিস্টেম সেটিংস" onClick={() => setActiveTab('settings')} color="bg-text-dark" />
@@ -990,505 +916,6 @@ function ActionButton({ icon: Icon, label, onClick, color }: any) {
   );
 }
 
-function FinesView({ user, settings, onSelectMember, toast }: { user: UserData, settings: any, onSelectMember?: (m: UserData) => void, toast: any }) {
-  const [members, setMembers] = useState<UserData[]>([]);
-  const [fines, setFines] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedMember, setSelectedMember] = useState('');
-  const [month, setMonth] = useState(String(new Date().getMonth() + 1).padStart(2, '0'));
-  const [year, setYear] = useState(String(new Date().getFullYear()));
-  const [amount, setAmount] = useState(settings?.defaultFine || '500');
-  const [reason, setReason] = useState('');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [msg, setMsg] = useState('');
-  const [isAdding, setIsAdding] = useState(false);
-  const [editingFine, setEditingFine] = useState<any>(null);
-
-  useEffect(() => {
-    fetchData();
-    if (user.role !== 'member') {
-      checkAndGenerateAutomatedFines();
-    }
-  }, []);
-
-  const checkAndGenerateAutomatedFines = async () => {
-    const now = new Date();
-    const day = now.getDate();
-    const monthIndex = now.getMonth();
-    const month = String(monthIndex + 1).padStart(2, '0');
-    const year = now.getFullYear();
-    const monthYear = `${year}-${month}`;
-    const monthName = `${MB[monthIndex]} ${year}`;
-
-    if (day <= 10) return;
-
-    // Fetch members and their activity for this month
-    const [r1, r2, r3] = await Promise.all([
-      supabase.from('ywf_users').select('id').eq('role', 'member'),
-      supabase.from('ywf_transactions').select('member_id').eq('type', 'deposit').eq('month_year', monthYear).eq('status', 'approved'),
-      supabase.from('ywf_fines').select('member_id, reason').eq('month_year', monthYear)
-    ]);
-
-    if (!r1.data) return;
-
-    const paidMemberIds = new Set(r2.data?.map(d => d.member_id) || []);
-    const existingFines = r3.data || [];
-    const finesToAdd = [];
-
-    for (const member of r1.data) {
-      if (paidMemberIds.has(member.id)) continue;
-
-      // 10th Day Fine
-      if (day > 10) {
-        const has10th = existingFines.some(f => f.member_id === member.id && f.reason.includes('১০ তারিখ'));
-        if (!has10th) {
-          finesToAdd.push({
-            member_id: member.id,
-            amount: 20,
-            reason: 'বকেয়া চাঁদা জরিমানা (১০ তারিখ)',
-            month_year: monthYear,
-            status: 'pending'
-          });
-        }
-      }
-
-      // 20th Day Fine
-      if (day > 20) {
-        const has20th = existingFines.some(f => f.member_id === member.id && f.reason.includes('২০ তারিখ'));
-        if (!has20th) {
-          finesToAdd.push({
-            member_id: member.id,
-            amount: 30,
-            reason: 'বকেয়া চাঁদা জরিমানা (২০ তারিখ)',
-            month_year: monthYear,
-            status: 'pending'
-          });
-        }
-      }
-    }
-
-    if (finesToAdd.length > 0) {
-      await supabase.from('ywf_fines').insert(finesToAdd);
-      fetchData();
-    }
-  };
-
-  const fetchData = async () => {
-    setLoading(true);
-    const [r1, r2] = await Promise.all([
-      supabase.from('ywf_users').select('*').eq('role', 'member').order('full_name'),
-      supabase.from('ywf_fines').select('*, member:ywf_users(full_name, account_number)').order('created_at', { ascending: false })
-    ]);
-    if (r1.data) setMembers(r1.data);
-    if (r2.data) setFines(r2.data);
-    setLoading(false);
-  };
-
-  const handleAddFine = async () => {
-    const cleanAmount = parseFloat(bnToEn(amount));
-    if (!selectedMember || !amount || isNaN(cleanAmount) || cleanAmount < 0 || !reason) {
-      toast('সব তথ্য সঠিকভাবে পূরণ করুন', 'e');
-      return;
-    }
-    setIsAdding(true);
-    setMsg('');
-    const mk = `${year}-${month}`;
-    
-    try {
-      if (editingFine) {
-        const { error } = await supabase.from('ywf_fines').update({
-          member_id: selectedMember,
-          amount: cleanAmount,
-          reason,
-          month_year: mk,
-          updated_at: new Date().toISOString()
-        }).eq('id', editingFine.id);
-
-        if (!error) {
-          setMsg('সফল: জরিমানা আপডেট করা হয়েছে');
-          setTimeout(() => {
-            setIsModalOpen(false);
-            setEditingFine(null);
-            fetchData();
-          }, 800);
-        } else throw error;
-      } else {
-        const { error } = await supabase.from('ywf_fines').insert({
-          member_id: selectedMember,
-          amount: cleanAmount,
-          reason,
-          month_year: mk,
-          status: 'pending'
-        });
-
-        if (!error) {
-          setMsg('সফল: জরিমানা যোগ করা হয়েছে');
-          setTimeout(() => {
-            setIsModalOpen(false);
-            fetchData();
-          }, 800);
-        } else throw error;
-      }
-    } catch (err: any) {
-      setMsg(`ত্রুটি: ${err.message}`);
-    } finally {
-      setIsAdding(false);
-    }
-  };
-
-  const handleDeleteFine = async (id: string) => {
-    try {
-      if (!window.confirm('আপনি কি নিশ্চিত যে এই জরিমানা রেকর্ডটি মুছে ফেলতে চান?')) return;
-      const { error } = await supabase.from('ywf_fines').delete().eq('id', id);
-      if (error) throw error;
-      fetchData();
-    } catch (error: any) {
-      toast('জরিমানা মুছে ফেলা যায়নি: ' + error.message, 'e');
-    }
-  };
-
-  const markPaid = async (id: string, memberId: string, amount: number, reason: string) => {
-    try {
-      if (!window.confirm('আপনি কি নিশ্চিত যে এটি পরিশোধিত হিসেবে মার্ক করতে চান?')) return;
-      
-      const { error } = await supabase.from('ywf_fines').update({ status: 'paid', is_paid: true, paid_at: new Date().toISOString() }).eq('id', id);
-      if (error) throw error;
-
-      // Also create a transaction for the ledger
-      const { error: tErr } = await supabase.from('ywf_transactions').insert({
-        member_id: memberId,
-        amount: amount,
-        type: 'deposit', // Fines are deposits into the foundation
-        payment_method: 'Cash',
-        note: `জরিমানা পরিশোধ (ম্যানুয়াল): ${reason}`,
-        status: 'approved'
-      });
-      
-      if (tErr) throw tErr;
-
-      toast('জরিমানা পরিশোধিত হিসেবে রেকর্ড করা হয়েছে', 's');
-      fetchData();
-    } catch (err: any) {
-      toast('ত্রুটি: ' + err.message, 'e');
-    }
-  };
-
-  const [activeSubTab, setActiveSubTab] = useState<'all' | 'summary'>('all');
-
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-lg font-black text-white">জরিমানা রেকর্ড</h2>
-          <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest mt-1">স্বয়ংক্রিয় ও ম্যানুয়াল জরিমানা ম্যানেজমেন্ট</p>
-        </div>
-        <button 
-          onClick={() => {
-            setEditingFine(null);
-            setAmount(settings?.defaultFine || '20');
-            setReason('');
-            setSelectedMember('');
-            setMsg('');
-            setIsModalOpen(true);
-          }}
-          className="bg-brand-danger hover:bg-red-600 text-white px-6 py-2.5 rounded-2xl text-sm font-black flex items-center gap-2 shadow-lg shadow-brand-danger/20 transition-all active:scale-95 w-full sm:w-auto justify-center"
-        >
-          <Plus className="w-4 h-4" /> জরিমানা যোগ করুন
-        </button>
-      </div>
-
-      <div className="flex bg-white/5 p-1 rounded-xl gap-1 w-fit">
-        <button 
-          onClick={() => setActiveSubTab('all')}
-          className={`px-6 py-2 text-xs font-bold rounded-lg transition-all ${activeSubTab === 'all' ? 'bg-white/10 text-white shadow-lg' : 'text-text-muted hover:text-white'}`}
-        >
-          সব রেকর্ড
-        </button>
-        <button 
-          onClick={() => setActiveSubTab('summary')}
-          className={`px-6 py-2 text-xs font-bold rounded-lg transition-all ${activeSubTab === 'summary' ? 'bg-white/10 text-white shadow-lg' : 'text-text-muted hover:text-white'}`}
-        >
-          সদস্য ভিত্তিক
-        </button>
-      </div>
-
-      {loading ? (
-        <div className="flex justify-center py-20"><div className="sp" /></div>
-      ) : activeSubTab === 'all' ? (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-4">
-            {fines.length === 0 ? (
-              <div className="bg-white/3 border border-dashed border-white/10 rounded-3xl p-20 flex flex-col items-center justify-center text-text-muted opacity-30">
-                <Gavel className="w-16 h-16 mb-4" />
-                <p className="font-bold">এখনো কোনো জরিমানা নেই</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {fines.map((f, i) => (
-                  <div key={f.id} className="bg-white/3 border border-white/7 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 group hover:bg-white/5 transition-all">
-                    <div className="flex items-center gap-4">
-                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xs font-black shrink-0 ${f.status === 'paid' ? 'bg-green-500/10 text-green-500' : 'bg-brand-danger/10 text-brand-danger'}`}>
-                        {i + 1}
-                      </div>
-                      <div>
-                        <div className="text-sm font-black text-white group-hover:text-brand-light transition-colors">{(f as any).member?.full_name}</div>
-                        <div className="text-[10px] text-text-muted font-bold uppercase tracking-widest">{f.reason} • {f.month_year ? (MB[parseInt(f.month_year.split('-')[1]) - 1] + ' ' + f.month_year.split('-')[0]) : ''}</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between sm:justify-end gap-3 border-t sm:border-t-0 border-white/5 pt-3 sm:pt-0">
-                      <div className="text-right mr-2">
-                        <div className="text-lg font-black text-white">৳{fmt(f.amount)}</div>
-                        <div className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter ${f.status === 'paid' ? 'bg-green-500/15 text-green-500' : 'bg-brand-danger/15 text-brand-danger'}`}>
-                          {f.status === 'paid' ? 'পরিশোধিত' : 'বকেয়া'}
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        {f.status === 'pending' && (
-                          <button 
-                            onClick={() => markPaid(f.id, f.member_id, f.amount, f.reason)}
-                            className="bg-green-500/10 text-green-500 p-2.5 rounded-xl hover:bg-green-500 hover:text-white transition-all shadow-sm"
-                            title="পরিশোধিত"
-                          >
-                            <CheckCircle className="w-4 h-4" />
-                          </button>
-                        )}
-                        <button 
-                          onClick={() => {
-                            setSelectedMember(f.member_id);
-                            setAmount(f.amount.toString());
-                            setReason(f.reason);
-                            setEditingFine(f);
-                            setIsModalOpen(true);
-                          }}
-                          className="bg-blue-500/10 text-blue-500 p-2.5 rounded-xl hover:bg-blue-500 hover:text-white transition-all shadow-sm"
-                          title="সম্পাদনা"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteFine(f.id)}
-                          className="bg-brand-danger/10 text-brand-danger p-2.5 rounded-xl hover:bg-brand-danger hover:text-white transition-all shadow-sm"
-                          title="মুছে ফেলুন"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-6">
-            <Card title="পরিসংখ্যান">
-               <div className="space-y-4">
-                  <div className="p-4 rounded-2xl bg-brand-danger/10 border border-brand-danger/20">
-                    <div className="text-[10px] font-bold text-brand-danger uppercase tracking-widest mb-1">মোট বকেয়া</div>
-                    <div className="text-2xl font-black text-brand-danger">৳{fmt(fines.filter(f => f.status === 'pending').reduce((s, f) => s + f.amount, 0))}</div>
-                  </div>
-                  <div className="p-4 rounded-2xl bg-green-500/10 border border-green-500/20">
-                    <div className="text-[10px] font-bold text-green-500 uppercase tracking-widest mb-1">মোট সংগৃহীত</div>
-                    <div className="text-2xl font-black text-green-500">৳{fmt(fines.filter(f => f.status === 'paid').reduce((s, f) => s + f.amount, 0))}</div>
-                  </div>
-                  <div className="pt-4 border-t border-white/5">
-                    <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-3">সাম্প্রতিক অ্যাকশন</div>
-                    <div className="space-y-3">
-                      {fines.filter(f => f.status === 'paid').slice(0, 3).map(f => (
-                        <div key={f.id} className="flex items-center gap-3">
-                          <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                          <div className="text-[10px] font-medium text-text-primary">{(f as any).member?.full_name} ৳{f.amount} দিয়েছেন</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-               </div>
-            </Card>
-          </div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {members.map((m, i) => {
-            const mFines = fines.filter(f => f.member_id === m.id);
-            const pending = mFines.filter(f => f.status === 'pending').reduce((s, f) => s + f.amount, 0);
-            const paid = mFines.filter(f => f.status === 'paid').reduce((s, f) => s + f.amount, 0);
-            
-            return (
-              <div key={m.id} className="bg-white/3 border border-white/7 rounded-2xl p-5 hover:bg-white/5 transition-all group">
-                <button 
-                  onClick={() => onSelectMember?.(m)}
-                  className="w-full text-left flex items-center gap-4 mb-4"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-light to-brand-accent flex items-center justify-center font-black text-xs text-white overflow-hidden shrink-0">
-                    {i + 1}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-bold truncate group-hover:text-brand-light transition-colors">{m.full_name}</div>
-                    <div className="text-[10px] text-text-muted">{m.account_number || '—'}</div>
-                  </div>
-                </button>
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div className={`p-3 rounded-xl ${pending > 0 ? 'bg-brand-danger/10 border border-brand-danger/20' : 'bg-white/5 opacity-30'}`}>
-                    <div className="text-[9px] font-bold text-text-muted uppercase tracking-widest mb-1">বকেয়া</div>
-                    <div className={`text-sm font-black ${pending > 0 ? 'text-brand-danger' : 'text-text-muted'}`}>৳{fmt(pending)}</div>
-                  </div>
-                  <div className={`p-3 rounded-xl ${paid > 0 ? 'bg-green-500/10 border border-green-500/20' : 'bg-white/5 opacity-30'}`}>
-                    <div className="text-[9px] font-bold text-text-muted uppercase tracking-widest mb-1">পরিশোধিত</div>
-                    <div className={`text-sm font-black ${paid > 0 ? 'text-green-500' : 'text-text-muted'}`}>৳{fmt(paid)}</div>
-                  </div>
-                </div>
-                {(user.role !== 'member' || user.email === 'youngsterwelfarefoundationywf@gmail.com') && (
-                  <div className="flex justify-end gap-2 pt-3 border-t border-white/5">
-                         <button 
-                            onClick={() => onSelectMember?.(m)}
-                            className="p-2 bg-blue-500/10 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition-all shadow-sm"
-                            title="এডিট"
-                         >
-                            <Edit2 className="w-3.5 h-3.5" />
-                         </button>
-                         <button 
-                            onClick={async () => {
-                               if (!window.confirm('আপনি কি নিশ্চিত যে এই সদস্যকে মুছে ফেলতে চান?')) return;
-                               const { error } = await supabase.from('ywf_users').delete().eq('id', m.id);
-                               if (!error) fetchData();
-                               else toast('ডিলিট করা যায়নি: ' + error.message, 'e');
-                            }}
-                            className="p-2 bg-brand-danger/10 text-brand-danger rounded-lg hover:bg-brand-danger hover:text-white transition-all shadow-sm"
-                            title="মুছে ফেলুন"
-                         >
-                            <Trash2 className="w-3.5 h-3.5" />
-                         </button>
-                      </div>
-                    )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="জরিমানা যোগ করুন">
-        <div className="space-y-4">
-          {msg && (
-            <div className={`p-4 rounded-2xl text-xs font-bold flex items-center gap-3 ${msg.includes('সফল') ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-brand-danger/10 text-brand-danger border border-brand-danger/20'}`}>
-              {msg.includes('সফল') ? <CheckCircle className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
-              {msg}
-            </div>
-          )}
-          <Select 
-            label="সদস্য *" 
-            value={selectedMember} 
-            onChange={(e) => setSelectedMember(e.target.value)}
-            options={[{ value: '', label: 'সদস্য সিলেক্ট করুন' }, ...members.map(m => ({ value: m.id, label: `${m.full_name} (${m.account_number || '—'})` }))]} 
-          />
-          <div className="grid grid-cols-2 gap-4">
-            <Select 
-              label="মাস *" 
-              value={month}
-              onChange={(e) => setMonth(e.target.value)}
-              options={MB.map((m, i) => ({ value: String(i + 1).padStart(2, '0'), label: m }))} 
-            />
-            <Select 
-              label="বছর *" 
-              value={year}
-              onChange={(e) => setYear(e.target.value)}
-              options={['2023', '2024', '2025', '2026'].map(y => ({ value: y, label: y }))} 
-            />
-          </div>
-          <Input label="পরিমাণ (৳) *" type="number" placeholder="500" value={amount} onChange={(e) => setAmount(e.target.value)} />
-          <Input label="কারণ *" placeholder="মিটিংয়ে অনুপস্থিতি" value={reason} onChange={(e) => setReason(e.target.value)} />
-          
-          <button 
-            onClick={handleAddFine}
-            disabled={!selectedMember || !amount || !reason || isAdding}
-            className="w-full bg-brand-danger hover:bg-red-600 disabled:opacity-50 text-white py-4 rounded-2xl font-black text-sm shadow-xl shadow-brand-danger/30 transition-all flex items-center justify-center gap-2 mt-4"
-          >
-            {isAdding ? <div className="sp w-5 h-5" /> : 'জরিমানা ইস্যু করুন'}
-          </button>
-        </div>
-      </Modal>
-    </div>
-  );
-}
-
-function MyFinesView({ user, toast, setActiveTab, showAll }: { user: UserData, toast: any, setActiveTab?: (t: string) => void, showAll?: boolean }) {
-  const [fines, setFines] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchFines();
-  }, [showAll, user.id]);
-
-  const fetchFines = async () => {
-    setLoading(true);
-    let q = supabase
-      .from('ywf_fines')
-      .select('*, member:ywf_users(full_name)')
-      .order('created_at', { ascending: false });
-    
-    if (!showAll) {
-      q = q.eq('member_id', user.id);
-    }
-
-    const { data } = await q;
-    if (data) setFines(data);
-    setLoading(false);
-  };
-
-  const pendingAmount = fines.filter(f => f.status === 'pending').reduce((s, f) => s + f.amount, 0);
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-black">{showAll ? 'সকল জরিমানা' : 'আমার জরিমানা'}</h2>
-        <div className="px-4 py-2 bg-brand-danger/10 border border-brand-danger/20 rounded-2xl">
-          <span className="text-[10px] font-bold text-brand-danger uppercase tracking-widest mr-2">মোট বকেয়া:</span>
-          <span className="text-sm font-black text-brand-danger">৳{fmt(pendingAmount)}</span>
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="flex justify-center py-20"><div className="sp" /></div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {fines.length === 0 ? (
-            <div className="col-span-full py-20 flex flex-col items-center opacity-20">
-              <CheckCircle className="w-16 h-16 mb-2" />
-              <p>আপনার কোনো জরিমানা নেই</p>
-            </div>
-          ) : (
-            fines.map(f => (
-              <div key={f.id} className="bg-white/3 border border-white/7 rounded-2xl p-5 flex items-center justify-between group hover:bg-white/5 transition-all">
-                <div className="flex items-center gap-4">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${f.status === 'paid' ? 'bg-green-500/10 text-green-500' : 'bg-brand-danger/10 text-brand-danger'}`}>
-                    <Gavel className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <div className="text-sm font-bold">{showAll ? f.member?.full_name : f.reason}</div>
-                    <div className="text-[10px] text-text-muted font-bold uppercase tracking-widest">{showAll ? f.reason : (f.month_year ? (MB[parseInt(f.month_year.split('-')[1]) - 1] + ' ' + f.month_year.split('-')[0]) : '')}</div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-lg font-black">৳{fmt(f.amount)}</div>
-                  <div className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${f.status === 'paid' ? 'bg-green-500/15 text-green-500' : 'bg-brand-danger/15 text-brand-danger'}`}>
-                    {f.status === 'paid' ? 'পরিশোধিত' : 'বাকি আছে'}
-                  </div>
-                  {!f.is_paid && f.status === 'pending' && (
-                    <button 
-                      onClick={() => setActiveTab ? setActiveTab('payNow') : (window as any).setActiveTab?.('payNow')}
-                      className="block mt-2 text-[10px] font-black text-brand-danger uppercase hover:underline"
-                    >
-                      এখনই দিন →
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function MembersView({ user, onSelectMember, toast }: { user: UserData, onSelectMember?: (m: UserData) => void, toast: any }) {
   const [members, setMembers] = useState<UserData[]>([]);
@@ -2294,22 +1721,17 @@ function SettingsView({ user, onUpdate, setActiveTab, toast }: { user: UserData,
            </div>
         </Card>
 
-        {/* Fine Rules */}
-        <Card title="জরিমানার নিয়ম">
+        {/* Monthly Deposit Settings */}
+        <Card title="চাঁদা ও পেমেন্ট">
            <div className="space-y-4">
               <Input label="মাসিক চাঁদা (৳)" type="number" value={monthlyDeposit} onChange={e => setMonthlyDeposit(e.target.value)} />
-              <Input label="১০ তারিখের পর জরিমানা (৳)" type="number" value={fineAfter10} onChange={e => setFineAfter10(e.target.value)} />
-              <Input label="২০ তারিখের পর জরিমানা (৳)" type="number" value={fineAfter20} onChange={e => setFineAfter20(e.target.value)} />
-              
-              <div className="pt-2">
-                 <button 
-                  onClick={handleSaveFines} 
-                  disabled={saving}
-                  className="w-full bg-brand-light hover:bg-brand-primary text-white py-3 rounded-xl font-bold text-sm shadow-lg shadow-brand-light/20 flex items-center justify-center gap-2 transition-all active:scale-95"
-                >
-                   <Save className="w-4 h-4" /> {saving ? 'সংরক্ষণ হচ্ছে...' : 'সংরক্ষণ করুন'}
-                </button>
-              </div>
+              <button 
+                onClick={handleSaveFines} 
+                disabled={saving}
+                className="w-full bg-brand-light hover:bg-brand-primary text-white py-3 rounded-xl font-bold text-sm shadow-lg shadow-brand-light/20 flex items-center justify-center gap-2 transition-all active:scale-95"
+              >
+                 <Save className="w-4 h-4" /> {saving ? 'সংরক্ষণ হচ্ছে...' : 'চাঁদা আপডেট করুন'}
+              </button>
            </div>
         </Card>
       </div>
@@ -2804,18 +2226,11 @@ function PayNowView({ user, settings, toast }: { user: UserData, settings: any, 
 
              <div className="space-y-1.5 px-1">
                 <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest ml-1">পেমেন্টের ধরণ</label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 gap-2">
                    <button 
-                     onClick={() => { setType('deposit'); setAmount(settings?.monthlyDeposit || '1000'); }} 
-                     className={`py-3 rounded-2xl text-xs font-bold border transition-all ${type === 'deposit' ? 'bg-brand-light/10 border-brand-light text-brand-light' : 'bg-white/3 border-white/5 text-text-muted'}`}
+                     className="py-4 rounded-2xl text-xs font-black bg-brand-light/10 border border-brand-light text-brand-light uppercase tracking-widest"
                    >
-                     মাসিক চাঁদা
-                   </button>
-                   <button 
-                     onClick={() => { setType('fine'); setAmount(''); }} 
-                     className={`py-3 rounded-2xl text-xs font-bold border transition-all ${type === 'fine' ? 'bg-brand-danger/10 border-brand-danger text-brand-danger' : 'bg-white/3 border-white/5 text-text-muted'}`}
-                   >
-                     জরিমানা
+                     মাসিক ডিপিএস / চাঁদা
                    </button>
                 </div>
              </div>
@@ -2824,14 +2239,14 @@ function PayNowView({ user, settings, toast }: { user: UserData, settings: any, 
                 <Select label="মাস" value={month} onChange={e => setMonth(e.target.value)} options={MB.map((m, i) => ({ value: String(i+1).padStart(2, '0'), label: m }))} />
                 <Select label="বছর" value={year} onChange={e => setYear(e.target.value)} options={['2024', '2025', '2026', '2027'].map(y => ({ value: y, label: y }))} />
              </div>
-             <Input label={`পরিমাণ (৳) ${type === 'fine' ? '*' : ''}`} type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder={type === 'fine' ? 'জরিমানার পরিমাণ লিখুন' : (settings?.monthlyDeposit || '১০০০')} />
+             <Input label="পরিমাণ (৳) *" type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder={settings?.monthlyDeposit || '১০০০'} />
              <Select label="পেমেন্ট মেথড" value={method} onChange={e => setMethod(e.target.value)} options={[{ value: 'bkash', label: 'বিকাশ' }, { value: 'nagad', label: 'নগদ' }, { value: 'rocket', label: 'রকেট' }]} />
              <Input label="Transaction ID / রেফারেন্স" placeholder="পেমেন্টের পর প্রাপ্ত ID দিন" value={trnId} onChange={e => setTrnId(e.target.value)} />
              
              <button 
                onClick={submitRequest}
                disabled={submitting}
-               className={`w-full text-white py-4 rounded-2xl font-black text-sm shadow-xl transition-all ${type === 'fine' ? 'bg-brand-danger shadow-brand-danger/20' : 'bg-brand-light shadow-brand-light/20'}`}
+               className="w-full bg-brand-light text-white py-4 rounded-2xl font-black text-sm shadow-xl shadow-brand-light/20 transition-all active:scale-95"
              >
                 {submitting ? 'পাঠানো হচ্ছে...' : 'পেমেন্ট রিকোয়েস্ট পাঠান'}
              </button>
@@ -2852,29 +2267,59 @@ function StatementView({ user, userId, toast }: { user: UserData, userId?: strin
   const [editingItem, setEditingItem] = useState<any>(null);
   const [amount, setAmount] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // Filters
+  const [filterMonth, setFilterMonth] = useState('all'); 
+  const [filterType, setFilterType] = useState('all');
 
   useEffect(() => {
     fetchData();
-  }, [userId]);
+  }, [userId, filterMonth, filterType]);
 
   const fetchData = async () => {
     setLoading(true);
-    let q = supabase.from('ywf_transactions').select('*, member:ywf_users(full_name)').eq('status', 'approved').order('created_at', { ascending: false });
-    if (userId) q = q.eq('member_id', userId);
-    const { data: txns } = await q;
-    if (txns) setData(txns);
-    setLoading(false);
+    try {
+      let q = supabase.from('ywf_transactions').select('*, member:ywf_users!member_id(full_name)').order('created_at', { ascending: false });
+      
+      if (userId) {
+        q = q.eq('member_id', userId);
+      }
+      
+      if (filterMonth !== 'all') {
+        q = q.eq('month_year', filterMonth);
+      }
+      
+      if (filterType !== 'all') {
+        q = q.eq('type', filterType);
+      }
+
+      const { data: txns, error } = await q;
+      if (error) throw error;
+      if (txns) setData(txns);
+    } catch (err: any) {
+      toast('লোড করা যায়নি: ' + err.message, 'e');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDelete = async (item: any) => {
-    if (!window.confirm('আপনি কি নিশ্চিত যে এই লেনদেনটি মুছে ফেলতে চান?')) return;
-    
-    try {
-      // 1. Delete from ledger
-      const { error: tErr } = await supabase.from('ywf_transactions').delete().eq('id', item.id);
-      if (tErr) throw tErr;
+  const getStats = () => {
+    const approved = data.filter(t => t.status === 'approved');
+    const income = approved.filter(t => t.type === 'deposit' || t.type === 'profit').reduce((s, t) => s + Number(t.amount), 0);
+    const expense = approved.filter(t => t.type === 'expense' || t.type === 'investment').reduce((s, t) => s + Number(t.amount), 0);
+    return { income, expense, balance: income - expense };
+  };
 
-      // 2. Delete from source table if linked
+  const stats = getStats();
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('আপনি কি নিশ্চিত যে এই লেনদেনটি মুছে ফেলতে চান?')) return;
+    const item = data.find(x => x.id === id);
+    if (!item) return;
+
+    try {
+      const { error: tErr } = await supabase.from('ywf_transactions').delete().eq('id', id);
+      if (tErr) throw tErr;
       if (item.ref_id) {
         let table = '';
         if (item.type === 'expense') table = 'ywf_expenses';
@@ -2882,7 +2327,6 @@ function StatementView({ user, userId, toast }: { user: UserData, userId?: strin
         if (item.type === 'investment') table = 'ywf_investments';
         if (table) await supabase.from(table).delete().eq('id', item.ref_id);
       }
-
       toast('লেনদেন মুছে ফেলা হয়েছে', 's');
       fetchData();
     } catch (err: any) {
@@ -2895,13 +2339,11 @@ function StatementView({ user, userId, toast }: { user: UserData, userId?: strin
     if (!amount || isNaN(cleanAmount)) return;
 
     try {
-      // 1. Update ledger
       const { error: tErr } = await supabase.from('ywf_transactions').update({
         amount: cleanAmount
       }).eq('id', editingItem.id);
       if (tErr) throw tErr;
 
-      // 2. Update source table if linked
       if (editingItem.ref_id) {
         let table = '';
         if (editingItem.type === 'expense') table = 'ywf_expenses';
@@ -2919,20 +2361,74 @@ function StatementView({ user, userId, toast }: { user: UserData, userId?: strin
     }
   };
 
-  const openEdit = (item: any) => {
-    setEditingItem(item);
-    setAmount(item.amount.toString());
-    setIsModalOpen(true);
-  };
-
   if (loading && data.length === 0) return <div className="flex justify-center py-20"><div className="sp" /></div>;
 
   return (
     <div className="space-y-6">
-       <div className="flex items-center justify-between">
-          <h2 className="text-xl font-black">{userId ? 'আমার স্টেটমেন্ট' : 'লেনদেন রিপোর্ট'}</h2>
-          <div className="text-[10px] font-bold text-text-muted uppercase px-3 py-1 bg-white/5 rounded-full border border-white/5">
-              মোট এন্ট্রি: {data.length}
+       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-bg-secondary/50 p-6 rounded-3xl border border-white/5">
+          <div>
+            <h2 className="text-2xl font-black text-white">{userId ? 'আমার স্টেটমেন্ট' : 'লেনদেন রিপোর্ট'}</h2>
+            <p className="text-xs font-medium text-text-muted mt-1">সংগঠনের যাবতীয় আয়-ব্যয়ের স্বচ্ছ হিসাব</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+             <div className="bg-bg-secondary border border-white/10 rounded-2xl px-3 py-1.5 flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-brand-light" />
+                <select 
+                   value={filterMonth} 
+                   onChange={e => setFilterMonth(e.target.value)}
+                   className="bg-transparent text-xs font-bold text-white focus:outline-none min-w-[120px]"
+                >
+                   <option value="all">সব সময়</option>
+                   {[0,1,2,3,4,5,6,7,8,9,10,11].map(m => {
+                     const d = new Date();
+                     d.setMonth(d.getMonth() - m);
+                     const val = d.toISOString().slice(0, 7);
+                     return <option key={val} value={val}>{MB[d.getMonth()]} {d.getFullYear()}</option>
+                   })}
+                </select>
+             </div>
+             <div className="bg-bg-secondary border border-white/10 rounded-2xl px-3 py-1.5 flex items-center gap-2">
+                <Filter className="w-4 h-4 text-blue-400" />
+                <select 
+                   value={filterType} 
+                   onChange={e => setFilterType(e.target.value)}
+                   className="bg-transparent text-xs font-bold text-white focus:outline-none min-w-[100px]"
+                >
+                   <option value="all">সব ক্যাটাগরি</option>
+                   <option value="deposit">সদস্য চাঁদা</option>
+                   <option value="profit">ব্যবসায়িক লাভ</option>
+                   <option value="expense">সাধারণ খরচ</option>
+                   <option value="investment">মূলধন বিনিয়োগ</option>
+                </select>
+             </div>
+          </div>
+       </div>
+
+       {/* Quick Stats */}
+       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <div className="bg-gradient-to-br from-green-500/10 to-transparent border border-green-500/10 rounded-3xl p-6 relative overflow-hidden group">
+             <div className="absolute -right-4 -top-4 w-24 h-24 bg-green-500/5 rounded-full blur-2xl group-hover:bg-green-500/10 transition-all" />
+             <div className="text-[10px] font-black text-green-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                মোট আয়
+             </div>
+             <div className="text-3xl font-black text-white">৳{fmt(stats.income)}</div>
+          </div>
+          <div className="bg-gradient-to-br from-brand-danger/10 to-transparent border border-brand-danger/10 rounded-3xl p-6 relative overflow-hidden group">
+             <div className="absolute -right-4 -top-4 w-24 h-24 bg-brand-danger/5 rounded-full blur-2xl group-hover:bg-brand-danger/10 transition-all" />
+             <div className="text-[10px] font-black text-brand-danger uppercase tracking-widest mb-2 flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-brand-danger animate-pulse" />
+                মোট ব্যয়
+             </div>
+             <div className="text-3xl font-black text-white">৳{fmt(stats.expense)}</div>
+          </div>
+          <div className="bg-gradient-to-br from-brand-light/10 to-transparent border border-brand-light/10 rounded-3xl p-6 relative overflow-hidden group">
+             <div className="absolute -right-4 -top-4 w-24 h-24 bg-brand-light/5 rounded-full blur-2xl group-hover:bg-brand-light/10 transition-all" />
+             <div className="text-[10px] font-black text-brand-light uppercase tracking-widest mb-2 flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-brand-light animate-pulse" />
+                নিট ব্যালেন্স
+             </div>
+             <div className="text-3xl font-black text-white">৳{fmt(stats.balance)}</div>
           </div>
        </div>
 
@@ -2941,34 +2437,79 @@ function StatementView({ user, userId, toast }: { user: UserData, userId?: strin
              <thead>
                 <tr className="bg-white/3 border-b border-white/5">
                    <th className="px-6 py-4 text-[10px] font-black uppercase text-text-dark w-12">#</th>
-                   <th className="px-6 py-4 text-[10px] font-black uppercase text-text-dark">তারিখ</th>
+                   <th className="px-6 py-4 text-[10px] font-black uppercase text-text-dark">তারিখ ও বিবরণ</th>
                    {!userId && <th className="px-6 py-4 text-[10px] font-black uppercase text-text-dark">সদস্য</th>}
-                   <th className="px-6 py-4 text-[10px] font-black uppercase text-text-dark">বিবরণ</th>
+                   <th className="px-6 py-4 text-[10px] font-black uppercase text-text-dark">স্ট্যাটাস</th>
                    <th className="px-6 py-4 text-[10px] font-black uppercase text-text-dark">মেথড</th>
                    <th className="px-6 py-4 text-[10px] font-black uppercase text-text-dark text-right">পরিমাণ</th>
                    {(user.role !== 'member' || user.email === 'youngsterwelfarefoundationywf@gmail.com') && <th className="px-6 py-4 text-[10px] font-black uppercase text-text-dark text-center">অ্যাকশন</th>}
                 </tr>
              </thead>
-             <tbody className="divide-y divide-white/5">
+             <tbody className="divide-y divide-white/5 bg-bg-secondary/30">
                 {data.map((t, i) => (
-                   <tr key={t.id} className="hover:bg-white/2 transition-colors">
-                      <td className="px-6 py-4 text-[10px] font-black text-text-dark lowercase italic opacity-50">{i + 1}</td>
-                      <td className="px-6 py-4 font-medium text-text-muted">{fd(t.created_at)}</td>
-                      {!userId && <td className="px-6 py-4 font-bold text-white">{t.member?.full_name}</td>}
-                      <td className="px-6 py-4">
-                         <div className="font-bold text-white">{t.month_year ? (MB[parseInt(t.month_year.split('-')[1]) - 1] + ' ' + t.month_year.split('-')[0]) : fd(t.created_at)}</div>
-                         <div className="text-[10px] text-text-dark uppercase">{t.type === 'deposit' ? 'চাঁদা' : 
-                             t.type === 'profit' ? 'লভ্যাংশ' : 
-                             t.type === 'expense' ? 'খরচ' : 
-                             t.type === 'investment' ? 'বিনিয়োগ' : 'অন্যান্য'}</div>
+                   <tr key={t.id} className="hover:bg-white/5 transition-all duration-300 group">
+                      <td className="px-6 py-5 text-[10px] font-black text-text-dark lowercase italic opacity-30 group-hover:opacity-100 transition-opacity">{i + 1}</td>
+                      <td className="px-6 py-5">
+                         <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-xl border ${
+                               t.type === 'deposit' ? 'bg-green-500/10 border-green-500/20 text-green-500' : 
+                               t.type === 'profit' ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' : 
+                               t.type === 'expense' ? 'bg-brand-danger/10 border-brand-danger/20 text-brand-danger' : 
+                               'bg-brand-light/10 border-brand-light/20 text-brand-light'
+                            }`}>
+                               {t.type === 'deposit' ? <PiggyBank className="w-4 h-4" /> : 
+                                t.type === 'profit' ? <TrendingUp className="w-4 h-4" /> : 
+                                t.type === 'expense' ? <Trash className="w-4 h-4" /> : <Wallet className="w-4 h-4" />}
+                            </div>
+                            <div>
+                               <div className="font-bold text-white text-sm">{t.month_year ? (MB[parseInt(t.month_year.split('-')[1]) - 1] + ' ' + t.month_year.split('-')[0]) : fd(t.created_at)}</div>
+                               <div className="text-[10px] text-text-dark font-black uppercase tracking-widest mt-0.5">
+                                 {t.type === 'deposit' ? 'সদস্য চাঁদা' : 
+                                  t.type === 'profit' ? 'ব্যবসায়িক লাভ' : 
+                                  t.type === 'expense' ? 'সাধারণ খরচ' : 
+                                  t.type === 'investment' ? 'মূলধন বিনিয়োগ' : 'অন্যান্য'}
+                               </div>
+                            </div>
+                         </div>
                       </td>
-                      <td className="px-6 py-4 text-[10px] font-bold uppercase text-text-dark">{t.payment_method}</td>
-                      <td className="px-6 py-4 text-right font-black text-white">৳{fmt(t.amount)}</td>
+                      {!userId && (
+                        <td className="px-6 py-5">
+                           <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[10px] font-black text-brand-light">
+                                 {t.member?.full_name?.charAt(0) || 'S'}
+                              </div>
+                              <div>
+                                 <div className="font-bold text-white text-xs">{t.member?.full_name || 'সিস্টেম'}</div>
+                                 <div className="text-[9px] text-text-dark font-medium italic opacity-70 truncate max-w-[120px]">{t.note}</div>
+                              </div>
+                           </div>
+                        </td>
+                      )}
+                      <td className="px-6 py-5">
+                         <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[9px] font-black uppercase tracking-wider ${
+                            t.status === 'approved' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 
+                            t.status === 'pending' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 
+                            'bg-brand-danger/10 text-brand-danger border-brand-danger/20'
+                         }`}>
+                            <div className={`w-1 h-1 rounded-full ${
+                               t.status === 'approved' ? 'bg-green-500' : t.status === 'pending' ? 'bg-blue-400' : 'bg-brand-danger'
+                            }`} />
+                            {t.status === 'approved' ? 'সফল' : t.status === 'pending' ? 'অপেক্ষমান' : 'বাতিল'}
+                         </div>
+                      </td>
+                      <td className="px-6 py-5">
+                         <div className="text-xs font-bold text-text-muted">{t.payment_method || '—'}</div>
+                      </td>
+                      <td className="px-6 py-5 text-right">
+                         <div className={`font-black text-base ${t.type === 'deposit' || t.type === 'profit' ? 'text-green-500' : 'text-brand-danger'}`}>
+                            {t.type === 'deposit' || t.type === 'profit' ? '+' : '-'}৳{fmt(t.amount)}
+                         </div>
+                      </td>
                       {(user.role !== 'member' || user.email === 'youngsterwelfarefoundationywf@gmail.com') && (
-                        <td className="px-6 py-4 text-center">
+                        <td className="px-6 py-5">
                            <div className="flex items-center justify-center gap-2">
-                              <button onClick={() => openEdit(t)} className="p-2 bg-blue-500/10 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition-all shadow-sm" title="সম্পাদনা"><Edit2 className="w-3.5 h-3.5" /></button>
-                              {(user.role === 'super_admin' || user.email === 'youngsterwelfarefoundationywf@gmail.com') && <button onClick={() => handleDelete(t.id)} className="p-2 bg-brand-danger/10 text-brand-danger rounded-lg hover:bg-brand-danger hover:text-white transition-all shadow-sm" title="ডিলিট"><Trash2 className="w-3.5 h-3.5" /></button>}
+                               <button onClick={() => { setEditingItem(t); setAmount(t.amount.toString()); setIsModalOpen(true); }} className="p-2 bg-blue-500/10 text-blue-400 rounded-xl hover:bg-blue-500 hover:text-white transition-all duration-300"><Edit2 className="w-3.5 h-3.5" /></button>
+                               {(user.role === 'super_admin' || user.email === 'youngsterwelfarefoundationywf@gmail.com') && <button onClick={() => handleDelete(t.id)} className="p-2 bg-brand-danger/10 text-brand-danger rounded-xl hover:bg-brand-danger hover:text-white transition-all duration-300"><Trash2 className="w-3.5 h-3.5" /></button>}
                            </div>
                         </td>
                       )}
@@ -2988,11 +2529,10 @@ function StatementView({ user, userId, toast }: { user: UserData, userId?: strin
           <div className="space-y-4">
              <Input label="পরিমাণ (৳) *" type="number" value={amount} onChange={e => setAmount(e.target.value)} />
              <div className="p-4 bg-white/5 rounded-2xl">
-                <p className="text-[10px] font-medium text-text-muted uppercase tracking-widest mb-1">সদস্য</p>
-                <p className="text-sm font-bold text-white">{editingItem?.member?.full_name}</p>
-                 <p className="text-[10px] font-medium text-brand-light mt-2">{editingItem?.month_year ? (MB[parseInt(editingItem.month_year.split('-')[1]) - 1] + ' ' + editingItem.month_year.split('-')[0]) : fd(editingItem?.created_at)}</p>
+                <p className="text-[10px] font-medium text-text-muted uppercase tracking-widest mb-1">বিবরণ</p>
+                <p className="text-sm font-bold text-white">{editingItem?.note || 'লেনদেন'}</p>
              </div>
-             <button onClick={handleEdit} className="w-full bg-brand-light text-white py-4 rounded-2xl font-black text-sm shadow-xl shadow-brand-light/20">আপডেট করুন</button>
+             <button onClick={handleEdit} className="w-full bg-brand-light text-white py-4 rounded-2xl font-black shadow-xl">আপডেট করুন</button>
           </div>
        </Modal>
     </div>
