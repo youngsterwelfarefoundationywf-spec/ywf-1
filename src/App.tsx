@@ -1353,6 +1353,7 @@ function ProfileView({ user, targetUser, onUpdate, toast }: { user: UserData, ta
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [passLoading, setPassLoading] = useState(false);
+  const [activeSubTab, setActiveSubTab] = useState<'info' | 'ledger'>('info');
   const [msg, setMsg] = useState('');
   const [passMsg, setPassMsg] = useState('');
 
@@ -1425,13 +1426,36 @@ function ProfileView({ user, targetUser, onUpdate, toast }: { user: UserData, ta
 
   return (
     <div className="space-y-6 pb-20">
-      <div className="flex items-center justify-between mb-2">
-        <h2 className="text-xl font-black">{targetUser ? `${targetUser.full_name}-এর প্রোফাইল` : 'আপনার প্রোফাইল'}</h2>
-        {targetUser && (
-           <button onClick={() => onUpdate()} className="text-[10px] font-black text-brand-light uppercase tracking-widest bg-brand-light/10 px-3 py-1.5 rounded-lg border border-brand-light/20 hover:bg-brand-light hover:text-white transition-all">← ফিরে যান</button>
-        )}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
+        <div>
+           <h2 className="text-3xl font-black text-white tracking-tight">{targetUser ? `${targetUser.full_name}` : 'আপনার প্রোফাইল'}</h2>
+           <p className="text-xs text-text-muted mt-1">সদস্যের বিস্তারিত তথ্য ও লেনদেন হিস্ট্রি</p>
+        </div>
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+           {targetUser && (user.role !== 'member' || user.email === 'youngsterwelfarefoundationywf@gmail.com') && (
+              <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5">
+                 <button 
+                   onClick={() => setActiveSubTab('info')}
+                   className={`px-6 py-2.5 text-xs font-black rounded-xl transition-all ${activeSubTab === 'info' ? 'bg-brand-light text-white shadow-lg' : 'text-text-muted hover:text-white'}`}
+                 >
+                   তথ্য
+                 </button>
+                 <button 
+                   onClick={() => setActiveSubTab('ledger')}
+                   className={`px-6 py-2.5 text-xs font-black rounded-xl transition-all ${activeSubTab === 'ledger' ? 'bg-brand-light text-white shadow-lg' : 'text-text-muted hover:text-white'}`}
+                 >
+                   লেনদেন
+                 </button>
+              </div>
+           )}
+           {targetUser && (
+              <button onClick={() => onUpdate()} className="text-[10px] font-black text-brand-light uppercase tracking-widest bg-brand-light/10 px-4 py-2.5 rounded-xl border border-brand-light/20 hover:bg-brand-light hover:text-white transition-all">← ফিরে যান</button>
+           )}
+        </div>
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      {activeSubTab === 'info' ? (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1">
           <Card title={targetUser ? "সদস্য তথ্য" : "আপনার ছবি"}>
             <div className="flex flex-col items-center">
@@ -1543,6 +1567,11 @@ function ProfileView({ user, targetUser, onUpdate, toast }: { user: UserData, ta
           )}
         </div>
       </div>
+      ) : (
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+           <StatementView user={user} userId={displayUser.id} toast={toast} />
+        </div>
+      )}
     </div>
   );
 }
@@ -2266,6 +2295,10 @@ function StatementView({ user, userId, toast }: { user: UserData, userId?: strin
   const [loading, setLoading] = useState(true);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [amount, setAmount] = useState('');
+  const [note, setNote] = useState('');
+  const [month, setMonth] = useState('');
+  const [year, setYear] = useState('');
+  const [method, setMethod] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   
   // Filters
@@ -2339,9 +2372,17 @@ function StatementView({ user, userId, toast }: { user: UserData, userId?: strin
     if (!amount || isNaN(cleanAmount)) return;
 
     try {
-      const { error: tErr } = await supabase.from('ywf_transactions').update({
-        amount: cleanAmount
-      }).eq('id', editingItem.id);
+      const updateData: any = {
+        amount: cleanAmount,
+        note: note,
+        payment_method: method
+      };
+
+      if (month && year) {
+        updateData.month_year = `${year}-${month}`;
+      }
+
+      const { error: tErr } = await supabase.from('ywf_transactions').update(updateData).eq('id', editingItem.id);
       if (tErr) throw tErr;
 
       if (editingItem.ref_id) {
@@ -2349,7 +2390,11 @@ function StatementView({ user, userId, toast }: { user: UserData, userId?: strin
         if (editingItem.type === 'expense') table = 'ywf_expenses';
         if (editingItem.type === 'profit') table = 'ywf_profits';
         if (editingItem.type === 'investment') table = 'ywf_investments';
-        if (table) await supabase.from(table).update({ amount: cleanAmount }).eq('id', editingItem.ref_id);
+        if (table) {
+           const refUpdate: any = { amount: cleanAmount, note: note };
+           if (month && year) refUpdate.date = `${year}-${month}-01`;
+           await supabase.from(table).update(refUpdate).eq('id', editingItem.id);
+        }
       }
 
       toast('লেনদেন আপডেট করা হয়েছে', 's');
@@ -2508,7 +2553,18 @@ function StatementView({ user, userId, toast }: { user: UserData, userId?: strin
                       {(user.role !== 'member' || user.email === 'youngsterwelfarefoundationywf@gmail.com') && (
                         <td className="px-6 py-5">
                            <div className="flex items-center justify-center gap-2">
-                               <button onClick={() => { setEditingItem(t); setAmount(t.amount.toString()); setIsModalOpen(true); }} className="p-2 bg-blue-500/10 text-blue-400 rounded-xl hover:bg-blue-500 hover:text-white transition-all duration-300"><Edit2 className="w-3.5 h-3.5" /></button>
+                               <button onClick={() => { 
+                                 setEditingItem(t); 
+                                 setAmount(t.amount.toString()); 
+                                 setNote(t.note || '');
+                                 setMethod(t.payment_method || '');
+                                 if (t.month_year) {
+                                   const [y, m] = t.month_year.split('-');
+                                   setYear(y);
+                                   setMonth(m);
+                                 }
+                                 setIsModalOpen(true); 
+                               }} className="p-2 bg-blue-500/10 text-blue-400 rounded-xl hover:bg-blue-500 hover:text-white transition-all duration-300"><Edit2 className="w-3.5 h-3.5" /></button>
                                {(user.role === 'super_admin' || user.email === 'youngsterwelfarefoundationywf@gmail.com') && <button onClick={() => handleDelete(t.id)} className="p-2 bg-brand-danger/10 text-brand-danger rounded-xl hover:bg-brand-danger hover:text-white transition-all duration-300"><Trash2 className="w-3.5 h-3.5" /></button>}
                            </div>
                         </td>
@@ -2525,14 +2581,25 @@ function StatementView({ user, userId, toast }: { user: UserData, userId?: strin
           )}
        </div>
 
-       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="লেনদেন এডিট করুন">
-          <div className="space-y-4">
+       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="লেনদেন সম্পাদনা">
+          <div className="space-y-4 pt-2">
              <Input label="পরিমাণ (৳) *" type="number" value={amount} onChange={e => setAmount(e.target.value)} />
-             <div className="p-4 bg-white/5 rounded-2xl">
-                <p className="text-[10px] font-medium text-text-muted uppercase tracking-widest mb-1">বিবরণ</p>
-                <p className="text-sm font-bold text-white">{editingItem?.note || 'লেনদেন'}</p>
+             {editingItem?.month_year && (
+               <div className="grid grid-cols-2 gap-4">
+                 <Select label="মাস" value={month} onChange={e => setMonth(e.target.value)} options={MB.map((m, i) => ({ value: String(i+1).padStart(2, '0'), label: m }))} />
+                 <Select label="বছর" value={year} onChange={e => setYear(e.target.value)} options={['2024', '2025', '2026', '2027'].map(y => ({ value: y, label: y }))} />
+               </div>
+             )}
+             <Input label="পেমেন্ট মেথড" value={method} onChange={e => setMethod(e.target.value)} />
+             <div className="space-y-2">
+                <label className="text-[10px] font-black text-text-muted uppercase tracking-widest ml-1">নোট / বিবরণ</label>
+                <textarea 
+                  value={note} 
+                  onChange={e => setNote(e.target.value)}
+                  className="w-full bg-bg-secondary border border-white/10 rounded-2xl p-4 text-xs focus:border-brand-light outline-none text-white min-h-[80px]"
+                />
              </div>
-             <button onClick={handleEdit} className="w-full bg-brand-light text-white py-4 rounded-2xl font-black shadow-xl">আপডেট করুন</button>
+             <button onClick={handleEdit} className="w-full bg-brand-light text-white py-4 rounded-2xl font-black shadow-xl transition-all active:scale-95">আপডেট করুন</button>
           </div>
        </Modal>
     </div>
