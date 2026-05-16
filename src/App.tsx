@@ -397,6 +397,37 @@ function App() {
     else setLoading(false);
   };
 
+  const notifyMember = async (memberId: string, amount: number, monthYear: string) => {
+    try {
+      // 1. Get member details
+      const { data: m } = await supabase.from('ywf_users').select('email, full_name').eq('id', memberId).single();
+      if (!m || !m.email) return;
+
+      // 2. Get total balance
+      const { data: txns } = await supabase.from('ywf_transactions').select('amount, type, status').eq('member_id', memberId).eq('status', 'approved');
+      const approved = txns || [];
+      const income = approved.filter(t => t.type === 'deposit' || t.type === 'profit').reduce((s, t) => s + Number(t.amount), 0);
+      const expense = approved.filter(t => t.type === 'expense' || t.type === 'investment').reduce((s, t) => s + Number(t.amount), 0);
+      const totalBalance = income - expense;
+
+      // 3. Call backend
+      await fetch('/api/notify-deposit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: m.email,
+          name: m.full_name,
+          amount,
+          totalBalance,
+          monthYear
+        })
+      });
+      console.log('Notification request sent');
+    } catch (err) {
+      console.error('Notification error:', err);
+    }
+  };
+
   useEffect(() => {
     // Safety timeout to prevent infinite loading
     const timeout = setTimeout(() => {
@@ -460,7 +491,7 @@ function App() {
         </div>
 
         <nav className="flex-1 py-4 overflow-y-auto custom-scrollbar">
-          {userData.role !== 'member' ? (
+          {userData.role === 'super_admin' ? (
             <>
               <div className="px-6 py-3 text-[10px] font-black text-text-dark uppercase tracking-[0.2em]">প্রধান</div>
               <SidebarItem icon={LayoutDashboard} label="ড্যাশবোর্ড" active={activeTab === 'dashboard'} onClick={() => { setActiveTab('dashboard'); setSelectedMemberForProfile(null); setSidebarOpen(false); }} />
@@ -476,9 +507,15 @@ function App() {
               
               <div className="px-6 py-4 text-[10px] font-black text-text-dark uppercase tracking-[0.2em]">সিস্টেম</div>
               <SidebarItem icon={History} label="অডিট লগ" active={activeTab === 'audit'} onClick={() => { setActiveTab('audit'); setSelectedMemberForProfile(null); setSidebarOpen(false); }} />
-              {userData.role === 'super_admin' && (
-                <SidebarItem icon={Settings} label="সেটিংস" active={activeTab === 'settings'} onClick={() => { setActiveTab('settings'); setSelectedMemberForProfile(null); setSidebarOpen(false); }} />
-              )}
+              <SidebarItem icon={Settings} label="সেটিংস" active={activeTab === 'settings'} onClick={() => { setActiveTab('settings'); setSelectedMemberForProfile(null); setSidebarOpen(false); }} />
+            </>
+          ) : userData.role === 'admin' ? (
+            <>
+              <div className="px-6 py-3 text-[10px] font-black text-text-dark uppercase tracking-[0.2em]">অ্যাডমিন প্যানেল</div>
+              <SidebarItem icon={LayoutDashboard} label="ড্যাশবোর্ড" active={activeTab === 'dashboard'} onClick={() => { setActiveTab('dashboard'); setSelectedMemberForProfile(null); setSidebarOpen(false); }} />
+              <SidebarItem icon={Users} label="সদস্য তালিকা" active={activeTab === 'members'} onClick={() => { setActiveTab('members'); setSelectedMemberForProfile(null); setSidebarOpen(false); }} />
+              <SidebarItem icon={Wallet} label="টাকা জমা (এন্ট্রি)" active={activeTab === 'deposit'} onClick={() => { setActiveTab('deposit'); setSelectedMemberForProfile(null); setSidebarOpen(false); }} />
+              <SidebarItem icon={FileText} label="পেমেন্ট হিস্ট্রি" active={activeTab === 'reports'} onClick={() => { setActiveTab('reports'); setSelectedMemberForProfile(null); setSidebarOpen(false); }} />
             </>
           ) : (
             <>
@@ -521,9 +558,9 @@ function App() {
             </div>
             <button 
               onClick={() => supabase.auth.signOut()}
-              className="p-1.5 text-text-dark hover:text-brand-danger transition-colors bg-white/5 rounded-lg"
+              className="p-2 text-text-dark hover:text-brand-danger transition-all bg-white/5 hover:bg-brand-danger/10 rounded-xl border border-white/5 hover:border-brand-danger/20"
             >
-              <LogOut className="w-3.5 h-3.5" />
+              <LogOut className="w-5 h-5" />
             </button>
           </div>
         </div>
@@ -560,7 +597,8 @@ function App() {
                 selectedMemberForProfile, 
                 setSelectedMemberForProfile,
                 setActiveTab,
-                toast
+                toast,
+                notifyMember
               )}
             </motion.div>
           </AnimatePresence>
@@ -661,27 +699,43 @@ function renderTabContent(
   selectedMemberForProfile: UserData | null, 
   setSelectedMemberForProfile: (u: UserData | null) => void,
   setActiveTab: (tab: string) => void,
-  toast: any
+  toast: any,
+  notifyMember: (memberId: string, amount: number, monthYear: string) => Promise<void>
 ) {
   switch (tab) {
     case 'dashboard': return <Dashboard user={user} setActiveTab={setActiveTab} />;
     case 'members': return <MembersView user={user} onSelectMember={(m) => { setSelectedMemberForProfile(m); setActiveTab('profile'); }} toast={toast} />;
-    case 'deposit': return <DepositView user={user} settings={settings} toast={toast} />;
+    case 'deposit': return <DepositView user={user} settings={settings} toast={toast} notifyMember={notifyMember} />;
     case 'profile': return <ProfileView user={user} targetUser={selectedMemberForProfile} onUpdate={() => { refreshUser(); setSelectedMemberForProfile(null); if(selectedMemberForProfile) setActiveTab('members'); }} toast={toast} />;
-    case 'requests': return <PaymentRequestsView user={user} toast={toast} />;
+    case 'requests': {
+      if (user.role === 'admin' && user.email !== 'youngsterwelfarefoundationywf@gmail.com') return <Dashboard user={user} setActiveTab={setActiveTab} />;
+      return <PaymentRequestsView user={user} toast={toast} notifyMember={notifyMember} />;
+    }
     case 'payNow': return <PayNowView user={user} settings={settings} toast={toast} />;
     case 'myStatement': return <StatementView user={user} userId={user.id} toast={toast} />;
     case 'reports': return <StatementView user={user} toast={toast} />;
-    case 'investments': return <FinanceView user={user} type="investment" toast={toast} />;
-    case 'profits': return <FinanceView user={user} type="profit" toast={toast} />;
-    case 'expenses': return <FinanceView user={user} type="expense" toast={toast} />;
+    case 'investments': {
+      if (user.role === 'admin' && user.email !== 'youngsterwelfarefoundationywf@gmail.com') return <Dashboard user={user} setActiveTab={setActiveTab} />;
+      return <FinanceView user={user} type="investment" toast={toast} />;
+    }
+    case 'profits': {
+      if (user.role === 'admin' && user.email !== 'youngsterwelfarefoundationywf@gmail.com') return <Dashboard user={user} setActiveTab={setActiveTab} />;
+      return <FinanceView user={user} type="profit" toast={toast} />;
+    }
+    case 'expenses': {
+      if (user.role === 'admin' && user.email !== 'youngsterwelfarefoundationywf@gmail.com') return <Dashboard user={user} setActiveTab={setActiveTab} />;
+      return <FinanceView user={user} type="expense" toast={toast} />;
+    }
     case 'memberInv': return (
       <div className="space-y-8">
         <FinanceView user={user} type="investment" title="ফাউন্ডেশন বিনিয়োগ" toast={toast} />
         <FinanceView user={user} type="profit" title="লভ্যাংশ ট্র্যাকার" toast={toast} />
       </div>
     );
-    case 'audit': return <AuditView user={user} />;
+    case 'audit': {
+      if (user.role === 'admin' && user.email !== 'youngsterwelfarefoundationywf@gmail.com') return <Dashboard user={user} setActiveTab={setActiveTab} />;
+      return <AuditView user={user} />;
+    }
     case 'settings': {
       if (user.role !== 'super_admin' && user.email !== 'youngsterwelfarefoundationywf@gmail.com') return <Dashboard user={user} setActiveTab={setActiveTab} />;
       return <SettingsView user={user} onUpdate={refreshUser} setActiveTab={setActiveTab} toast={toast} />;
@@ -1233,28 +1287,29 @@ function MembersView({ user, onSelectMember, toast }: { user: UserData, onSelect
                   placeholder="সম্পূর্ণ ঠিকানা" 
                 />
              </div>
-             <div className="flex gap-4 pt-4">
-                <button 
-                  onClick={() => setIsModalOpen(false)} 
-                  className="flex-1 bg-white/5 border border-white/10 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-white/10 transition-all"
-                >
-                  বাতিল
-                </button>
-                <button 
-                  onClick={handleCreateMember} 
-                  disabled={addingMember}
-                  className="flex-[2] bg-brand-primary text-black py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-brand-primary/20 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
-                >
-                   {addingMember ? <div className="sp w-5 h-5 border-black/30 border-t-black" /> : <Plus className="w-5 h-5" />} সদস্য যোগ করুন
-                </button>
-             </div>
+                       <div className="flex gap-4 pt-4">
+                          <button 
+                            type="button" 
+                            onClick={() => setIsModalOpen(false)} 
+                            className="flex-1 bg-white/5 border border-white/10 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-white/10 transition-all"
+                          >
+                             বাতিল
+                          </button>
+                          <button 
+                            type="submit" 
+                            disabled={addingMember}
+                            className="flex-[2] bg-brand-primary text-black py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-brand-primary/20 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
+                          >
+                             {addingMember ? <div className="sp w-5 h-5 border-black/30 border-t-black" /> : <Plus className="w-5 h-5" />} সদস্য যোগ করুন
+                          </button>
+                       </div>
           </div>
        </Modal>
     </div>
   );
 }
 
-function DepositView({ user, settings, toast }: { user: UserData, settings: any, toast: any }) {
+function DepositView({ user, settings, toast, notifyMember }: { user: UserData, settings: any, toast: any, notifyMember: any }) {
   const [members, setMembers] = useState<UserData[]>([]);
   const [selectedMember, setSelectedMember] = useState('');
   const [month, setMonth] = useState(String(new Date().getMonth() + 1).padStart(2, '0'));
@@ -1329,6 +1384,7 @@ function DepositView({ user, settings, toast }: { user: UserData, settings: any,
 
       if (!error) {
         toast('টাকা সফলভাবে জমা হয়েছে', 's');
+        notifyMember(selectedMember, cleanAmount, MB[parseInt(month) - 1] + ' ' + year);
         setNote('');
         fetchStatus();
         fetchRecentHistory();
@@ -2341,7 +2397,7 @@ function FinanceView({ user, type, title, toast }: { user: UserData, type: 'prof
   );
 }
 
-function PaymentRequestsView({ user, toast }: { user: UserData, toast: any }) {
+function PaymentRequestsView({ user, toast, notifyMember }: { user: UserData, toast: any, notifyMember: any }) {
   const [reqs, setReqs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -2377,6 +2433,10 @@ function PaymentRequestsView({ user, toast }: { user: UserData, toast: any }) {
          });
          
          if (tErr) throw tErr;
+
+         // Notify member
+         const my = req.month_year ? (MB[parseInt(req.month_year.split('-')[1]) - 1] + ' ' + req.month_year.split('-')[0]) : '';
+         notifyMember(req.member_id, req.amount, my);
 
          // If it's a deposit, add to ywf_deposits for tracking
          if (req.type === 'deposit') {
@@ -2545,7 +2605,7 @@ function PayNowView({ user, settings, toast }: { user: UserData, settings: any, 
                 <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest ml-1">পেমেন্টের ধরণ</label>
                 <div className="grid grid-cols-1 gap-2">
                    <button 
-                     className="py-4 rounded-2xl text-xs font-black bg-brand-light/10 border border-brand-light text-brand-light uppercase tracking-widest"
+                     className="py-4 rounded-2xl text-xs font-black bg-brand-primary/10 border border-brand-primary text-brand-primary uppercase tracking-widest"
                    >
                      মাসিক ডিপিএস / চাঁদা
                    </button>
@@ -2852,8 +2912,12 @@ function StatementView({ user, userId, toast }: { user: UserData, userId?: strin
                                    setMonth(m);
                                  }
                                  setIsModalOpen(true); 
-                               }} className="p-2 bg-blue-500/10 text-blue-400 rounded-xl hover:bg-blue-500 hover:text-white transition-all duration-300"><Edit2 className="w-3.5 h-3.5" /></button>
-                               {(user.role === 'super_admin' || user.email === 'youngsterwelfarefoundationywf@gmail.com') && <button onClick={() => handleDelete(t.id)} className="p-2 bg-brand-danger/10 text-brand-danger rounded-xl hover:bg-brand-danger hover:text-white transition-all duration-300"><Trash2 className="w-3.5 h-3.5" /></button>}
+                               }} className="p-3 bg-brand-primary/10 text-brand-primary rounded-xl hover:bg-brand-primary hover:text-black transition-all duration-300 border border-brand-primary/20 flex items-center justify-center"><Edit2 className="w-4 h-4" /></button>
+                               {(user.role === 'super_admin' || user.email === 'youngsterwelfarefoundationywf@gmail.com') && (
+                                 <button onClick={() => handleDelete(t.id)} className="p-3 bg-brand-danger/10 text-brand-danger rounded-xl hover:bg-brand-danger hover:text-white transition-all duration-300 border border-brand-danger/20 flex items-center justify-center">
+                                    <Trash2 className="w-4 h-4" />
+                                 </button>
+                               )}
                            </div>
                         </td>
                       )}
@@ -2992,22 +3056,25 @@ function LoginPage({ onLogin }: { onLogin: () => void }) {
             <p className="text-text-muted text-xs">আপনার অ্যাকাউন্টে লগইন করুন</p>
           </div>
 
-          <div className="flex bg-white/5 p-1 rounded-xl gap-1 mb-8">
+        <div className="flex bg-white/5 p-1 rounded-2xl gap-1 mb-8">
             <button 
+              type="button"
               onClick={() => setRole('member')}
-              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${role === 'member' ? 'bg-brand-primary text-black shadow-lg shadow-brand-primary/20' : 'text-text-muted hover:text-white'}`}
+              className={`flex-1 py-3.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${role === 'member' ? 'bg-brand-primary text-black shadow-xl shadow-brand-primary/20' : 'text-text-muted hover:text-white'}`}
             >
               সদস্য
             </button>
             <button 
+              type="button"
               onClick={() => setRole('admin')}
-              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${role === 'admin' ? 'bg-brand-primary text-black shadow-lg shadow-brand-primary/20' : 'text-text-muted hover:text-white'}`}
+              className={`flex-1 py-3.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${role === 'admin' ? 'bg-brand-primary text-black shadow-xl shadow-brand-primary/20' : 'text-text-muted hover:text-white'}`}
             >
               অ্যাডমিন
             </button>
             <button 
+              type="button"
               onClick={() => setRole('super_admin')}
-              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${role === 'super_admin' ? 'bg-brand-primary text-black shadow-lg shadow-brand-primary/20' : 'text-text-muted hover:text-white'}`}
+              className={`flex-1 py-3.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${role === 'super_admin' ? 'bg-brand-primary text-black shadow-xl shadow-brand-primary/20' : 'text-text-muted hover:text-white'}`}
             >
               সুপার
             </button>
