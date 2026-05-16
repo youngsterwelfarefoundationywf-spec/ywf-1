@@ -323,23 +323,16 @@ function App() {
     checkSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_OUT') {
-        setSession(null);
+      console.log('Auth event:', event);
+      setSession(session);
+      if (session && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
+        fetchUserData(session.user.email!);
+      } else if (event === 'SIGNED_OUT') {
         setUserData(null);
         setLoading(false);
-      } else if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') {
-        setSession(session);
-        if (session) {
-          fetchUserData(session.user.email!);
-        }
-      } else {
-        setSession(session);
-        if (session) {
-          fetchUserData(session.user.email!);
-        } else {
-          setUserData(null);
-          setLoading(false);
-        }
+      } else if (!session) {
+        setUserData(null);
+        setLoading(false);
       }
     });
 
@@ -347,45 +340,57 @@ function App() {
   }, []);
 
   const fetchUserData = async (email: string) => {
+    if (!email) return;
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      const { data: users, error } = await supabase
         .from('ywf_users')
         .select('*')
-        .eq('email', email.toLowerCase())
-        .single();
+        .eq('email', email.trim().toLowerCase());
 
-      if (error) {
-        console.warn('User data fetch error:', error.message);
-        // If profile doesn't exist (PGRST116), try to create one if it's the first login
-        if ((error as any).code === 'PGRST116' || error.message.includes('No object found')) {
-           const isFoundation = email.toLowerCase() === 'youngsterwelfarefoundationywf@gmail.com';
-           const { data: newUser, error: createError } = await supabase
-             .from('ywf_users')
-             .insert({
-                id: session?.user?.id,
-                email: email.toLowerCase(),
-                full_name: session?.user?.user_metadata?.full_name || (isFoundation ? 'Foundation Admin' : 'নতুন সদস্য'),
-                role: (isFoundation || email.toLowerCase() === 'youngsterwelfarefoundationywf@gmail.com') ? 'super_admin' : 'member',
-                is_active: true
-             })
-             .select()
-             .single();
-           
-           if (!createError) {
-             setUserData(newUser);
-           } else {
-             console.error('Auto profile creation failed:', createError);
-             setUserData(null);
-           }
-        } else {
+      if (error) throw error;
+
+      if (users && users.length > 0) {
+        if (!users[0].is_active) {
+          console.warn('User is inactive:', email);
+          toast('আপনার অ্যাকাউন্টটি সাময়িকভাবে বন্ধ আছে। অ্যাডমিনের সাথে যোগাযোগ করুন।', 'e');
           setUserData(null);
+          await supabase.auth.signOut();
+          return;
         }
+        setUserData(users[0]);
       } else {
-        setUserData(data);
+        // Try to create profile
+        const { data: { session: s } } = await supabase.auth.getSession();
+        if (!s) {
+          setUserData(null);
+          return;
+        }
+
+        const isFoundation = email.toLowerCase() === 'youngsterwelfarefoundationywf@gmail.com';
+        const { data: newUser, error: createError } = await supabase
+          .from('ywf_users')
+          .insert({
+             id: s.user.id,
+             email: email.trim().toLowerCase(),
+             full_name: s.user.user_metadata?.full_name || (isFoundation ? 'Foundation Admin' : 'নতুন সদস্য'),
+             role: isFoundation ? 'super_admin' : 'member',
+             is_active: true
+          })
+          .select()
+          .single();
+
+        if (createError) {
+          console.error('Create profile error:', createError);
+          toast('আপনার প্রোফাইল তৈরি করা সম্ভব হয়নি। অ্যাডমিনের সাথে যোগাযোগ করুন।', 'e');
+          setUserData(null);
+        } else {
+          setUserData(newUser);
+        }
       }
-    } catch (err) {
-      console.error('User data fetch exception:', err);
+    } catch (err: any) {
+      console.error('Fetch user data exception:', err);
+      toast(`প্রোফাইল লোড করা যায়নি: ${err.message}`, 'e');
       setUserData(null);
     } finally {
       setLoading(false);
@@ -832,7 +837,7 @@ function renderTabContent(
     }
     case 'settings': {
       if (user.role !== 'super_admin' && user.email !== 'youngsterwelfarefoundationywf@gmail.com') return <Dashboard user={user} setActiveTab={setActiveTab} />;
-      return <SettingsView user={user} onUpdate={refreshUser} setActiveTab={setActiveTab} toast={toast} />;
+      return <SettingsView user={user} onUpdate={refreshUser} setActiveTab={setActiveTab} toast={toast} logAction={logAction} />;
     }
     default: return (
       <div className="flex flex-col items-center justify-center py-20 opacity-30">
@@ -2034,7 +2039,7 @@ function AuditView({ user }: { user: UserData }) {
   );
 }
 
-function SettingsView({ user, onUpdate, setActiveTab, toast }: { user: UserData, onUpdate?: () => void, setActiveTab: (tab: string) => void, toast: any }) {
+function SettingsView({ user, onUpdate, setActiveTab, toast, logAction }: { user: UserData, onUpdate?: () => void, setActiveTab: (tab: string) => void, toast: any, logAction: any }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [admins, setAdmins] = useState<UserData[]>([]);
@@ -2540,14 +2545,16 @@ function PaymentRequestsView({ user, toast, notifyMember, logAction }: { user: U
          const my = req.month_year ? (MB[parseInt(req.month_year.split('-')[1]) - 1] + ' ' + req.month_year.split('-')[0]) : '';
          notifyMember(req.member_id, req.amount, my);
 
-         // If it's a deposit, add to ywf_deposits for tracking
+         // If it's a deposit, add to ywf_transactions for tracking
          if (req.type === 'deposit') {
-            await supabase.from('ywf_deposits').insert({
+            await supabase.from('ywf_transactions').insert({
                member_id: req.member_id,
                amount: req.amount,
+               type: 'deposit',
+               status: 'approved',
                month_year: req.month_year,
                payment_method: req.payment_method,
-               transaction_id: req.transaction_id || (req.note?.includes('TrxID:') ? req.note.split('TrxID:')[1].trim() : ''),
+               note: req.note,
                date: new Date().toISOString().split('T')[0]
             });
          }
@@ -3082,14 +3089,14 @@ function LoginPage({ onLogin }: { onLogin: () => void }) {
     setLoading(true);
     setError('');
 
-    let finalEmail = email;
-    if (/^[0-9+\s]+$/.test(email)) {
-      finalEmail = email.replace(/\s/g, '') + '@ywf.com';
+    let finalEmail = email.trim();
+    if (/^[0-9+\s]+$/.test(finalEmail)) {
+      finalEmail = finalEmail.replace(/\s/g, '') + '@ywf.com';
     }
 
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email: finalEmail,
-      password,
+      password: password.trim(),
     });
 
     if (signInError) {

@@ -186,6 +186,8 @@ $$ LANGUAGE sql STABLE SECURITY DEFINER;
 
 -- Policies for ywf_users: 
 CREATE POLICY "Users can view own profile" ON ywf_users FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Users can insert own profile" ON ywf_users FOR INSERT WITH CHECK (auth.uid() = id);
+CREATE POLICY "Users can update own profile" ON ywf_users FOR UPDATE USING (auth.uid() = id);
 CREATE POLICY "Admins can view all profiles_v3" ON ywf_users FOR SELECT USING ( is_admin() );
 CREATE POLICY "Admins can update profiles_v3" ON ywf_users FOR UPDATE USING ( is_admin() );
 
