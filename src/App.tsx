@@ -392,6 +392,98 @@ function App() {
     }
   };
 
+  const logAction = async (action: string) => {
+    try {
+      await supabase.from('ywf_audit_log').insert({
+        action,
+        user_id: userData?.id,
+        user_email: userData?.email
+      });
+    } catch (e) {
+      console.error('Audit log failed:', e);
+    }
+  };
+
+  const checkAndApplyFines = async () => {
+    if (userData?.role === 'member') return; // Only run for admins or system
+    
+    try {
+      const now = new Date();
+      const day = now.getDate();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const year = now.getFullYear();
+      const mk = `${year}-${month}`;
+      
+      // Fine 1: After 10th (20 TK if not paid)
+      // Fine 2: After 20th (30 TK if not paid)
+      
+      if (day < 11) return; // No fines before 11th
+      
+      const fineAmount = day > 20 ? parseFloat(settings.fineAfter20 || '30') : parseFloat(settings.fineAfter10 || '20');
+      
+      // Get all active members
+      const { data: members } = await supabase.from('ywf_users').select('id').eq('role', 'member').eq('is_active', true);
+      if (!members) return;
+      
+      // Get all deposits for this month
+      const { data: txns } = await supabase.from('ywf_transactions').select('member_id').eq('month_year', mk).eq('type', 'deposit').eq('status', 'approved');
+      const paidMembers = new Set((txns || []).map(t => t.member_id));
+      
+      // Get already applied fines for this month
+      const { data: existingFines } = await supabase.from('ywf_fines').select('member_id, amount').eq('month_year', mk);
+      const finedMembers = new Map((existingFines || []).map(f => [f.member_id, f.amount]));
+      
+      const finesToInsert: any[] = [];
+      const finesToUpdate: any[] = [];
+      
+      for (const m of members) {
+        if (!paidMembers.has(m.id)) {
+           const currentFine = finedMembers.get(m.id);
+           if (!currentFine) {
+              // Apply new fine
+              finesToInsert.push({
+                 member_id: m.id,
+                 amount: fineAmount,
+                 month_year: mk,
+                 status: 'pending',
+                 is_paid: false,
+                 reason: day > 20 ? 'Late payment (After 20th)' : 'Late payment (After 10th)'
+              });
+           } else if (day > 20 && currentFine < parseFloat(settings.fineAfter20)) {
+              // Upgrade fine
+              finesToUpdate.push({
+                 member_id: m.id,
+                 month_year: mk,
+                 amount: fineAmount,
+                 reason: 'Late payment (After 20th)'
+              });
+           }
+        }
+      }
+      
+      if (finesToInsert.length > 0) {
+         await supabase.from('ywf_fines').insert(finesToInsert);
+         logAction(`Applied monthly fines to ${finesToInsert.length} members for ${mk}`);
+      }
+      
+      if (finesToUpdate.length > 0) {
+         for (const f of finesToUpdate) {
+            await supabase.from('ywf_fines').update({ amount: f.amount, reason: f.reason }).eq('member_id', f.member_id).eq('month_year', f.month_year);
+         }
+         logAction(`Upgraded monthly fines for ${finesToUpdate.length} members for ${mk}`);
+      }
+      
+    } catch (err) {
+      console.error('Fine application error:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (userData && userData.role !== 'member') {
+      checkAndApplyFines();
+    }
+  }, [userData]);
+
   const refreshUser = () => {
     if (session?.user?.email) fetchUserData(session.user.email);
     else setLoading(false);
@@ -598,7 +690,8 @@ function App() {
                 setSelectedMemberForProfile,
                 setActiveTab,
                 toast,
-                notifyMember
+                notifyMember,
+                logAction
               )}
             </motion.div>
           </AnimatePresence>
@@ -700,36 +793,37 @@ function renderTabContent(
   setSelectedMemberForProfile: (u: UserData | null) => void,
   setActiveTab: (tab: string) => void,
   toast: any,
-  notifyMember: (memberId: string, amount: number, monthYear: string) => Promise<void>
+  notifyMember: (memberId: string, amount: number, monthYear: string) => Promise<void>,
+  logAction: (action: string) => Promise<void>
 ) {
   switch (tab) {
     case 'dashboard': return <Dashboard user={user} setActiveTab={setActiveTab} />;
-    case 'members': return <MembersView user={user} onSelectMember={(m) => { setSelectedMemberForProfile(m); setActiveTab('profile'); }} toast={toast} />;
-    case 'deposit': return <DepositView user={user} settings={settings} toast={toast} notifyMember={notifyMember} />;
-    case 'profile': return <ProfileView user={user} targetUser={selectedMemberForProfile} onUpdate={() => { refreshUser(); setSelectedMemberForProfile(null); if(selectedMemberForProfile) setActiveTab('members'); }} toast={toast} />;
+    case 'members': return <MembersView user={user} onSelectMember={(m) => { setSelectedMemberForProfile(m); setActiveTab('profile'); }} toast={toast} logAction={logAction} />;
+    case 'deposit': return <DepositView user={user} settings={settings} toast={toast} notifyMember={notifyMember} logAction={logAction} />;
+    case 'profile': return <ProfileView user={user} targetUser={selectedMemberForProfile} onUpdate={() => { refreshUser(); setSelectedMemberForProfile(null); if(selectedMemberForProfile) setActiveTab('members'); }} toast={toast} logAction={logAction} />;
     case 'requests': {
       if (user.role === 'admin' && user.email !== 'youngsterwelfarefoundationywf@gmail.com') return <Dashboard user={user} setActiveTab={setActiveTab} />;
-      return <PaymentRequestsView user={user} toast={toast} notifyMember={notifyMember} />;
+      return <PaymentRequestsView user={user} toast={toast} notifyMember={notifyMember} logAction={logAction} />;
     }
     case 'payNow': return <PayNowView user={user} settings={settings} toast={toast} />;
     case 'myStatement': return <StatementView user={user} userId={user.id} toast={toast} />;
     case 'reports': return <StatementView user={user} toast={toast} />;
     case 'investments': {
       if (user.role === 'admin' && user.email !== 'youngsterwelfarefoundationywf@gmail.com') return <Dashboard user={user} setActiveTab={setActiveTab} />;
-      return <FinanceView user={user} type="investment" toast={toast} />;
+      return <FinanceView user={user} type="investment" toast={toast} logAction={logAction} />;
     }
     case 'profits': {
       if (user.role === 'admin' && user.email !== 'youngsterwelfarefoundationywf@gmail.com') return <Dashboard user={user} setActiveTab={setActiveTab} />;
-      return <FinanceView user={user} type="profit" toast={toast} />;
+      return <FinanceView user={user} type="profit" toast={toast} logAction={logAction} />;
     }
     case 'expenses': {
       if (user.role === 'admin' && user.email !== 'youngsterwelfarefoundationywf@gmail.com') return <Dashboard user={user} setActiveTab={setActiveTab} />;
-      return <FinanceView user={user} type="expense" toast={toast} />;
+      return <FinanceView user={user} type="expense" toast={toast} logAction={logAction} />;
     }
     case 'memberInv': return (
       <div className="space-y-8">
-        <FinanceView user={user} type="investment" title="ফাউন্ডেশন বিনিয়োগ" toast={toast} />
-        <FinanceView user={user} type="profit" title="লভ্যাংশ ট্র্যাকার" toast={toast} />
+        <FinanceView user={user} type="investment" title="ফাউন্ডেশন বিনিয়োগ" toast={toast} logAction={logAction} />
+        <FinanceView user={user} type="profit" title="লভ্যাংশ ট্র্যাকার" toast={toast} logAction={logAction} />
       </div>
     );
     case 'audit': {
@@ -974,7 +1068,7 @@ function Dashboard({ user, setActiveTab }: { user: UserData, setActiveTab: (tab:
         <StatCard colorClass="bg-green-500/10 text-green-500" icon={PiggyBank} label="মোট জমা (চাঁদা)" value={fmt(stats.totDep)} sub="শুধু সদস্যদের চাঁদা" onClick={() => setActiveTab('deposit')} />
         <StatCard colorClass="bg-blue-500/10 text-blue-500" icon={BarChart3} label="মোট বিনিয়োগ" value={fmt(stats.totInv)} sub={`${stats.activeInvsCount} টি সক্রিয়`} onClick={() => setActiveTab('investments')} />
         <StatCard colorClass="bg-orange-500/10 text-orange-500" icon={TrendingUp} label="মোট লাভ" value={fmt(stats.totProf)} sub="বিনিয়োগ থেকে আয়" onClick={() => setActiveTab('profits')} />
-        <StatCard colorClass="bg-red-500/10 text-red-500" icon={AlertTriangle} label="মোট জরিমানা" value={fmt(stats.totFines)} sub="সব সদস্যের জরিমানা" />
+        <StatCard colorClass="bg-red-500/10 text-red-500" icon={AlertTriangle} label="মোট জরিমানা" value={fmt(stats.totFines)} sub="সব সদস্যের জরিমানা" onClick={() => setActiveTab('reports')} />
         
         <StatCard colorClass="bg-pink-500/10 text-pink-500" icon={Receipt} label="মোট খরচ" value={fmt(stats.totExp)} sub="সব ব্যয়" onClick={() => setActiveTab('expenses')} />
         <StatCard colorClass="bg-teal-500/10 text-teal-500" icon={Scale} label="নিট ব্যালেন্স" value={fmt(stats.netBalance)} sub="লাভ+জরিমানা-খরচ" />
@@ -1061,7 +1155,7 @@ function ActionButton({ icon: Icon, label, onClick, color }: any) {
 }
 
 
-function MembersView({ user, onSelectMember, toast }: { user: UserData, onSelectMember?: (m: UserData) => void, toast: any }) {
+function MembersView({ user, onSelectMember, toast, logAction }: { user: UserData, onSelectMember?: (m: UserData) => void, toast: any, logAction: any }) {
   const [members, setMembers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -1132,6 +1226,7 @@ function MembersView({ user, onSelectMember, toast }: { user: UserData, onSelect
       setNewAddress('');
       fetchMembers();
       toast('নতুন সদস্য যুক্ত করা হয়েছে');
+      logAction(`নতুন সদস্য যুক্ত করা হয়েছে: ${newName}`);
     } catch (e: any) {
       toast(`ত্রুটি: ${e.message}`, 'e');
     } finally {
@@ -1309,7 +1404,7 @@ function MembersView({ user, onSelectMember, toast }: { user: UserData, onSelect
   );
 }
 
-function DepositView({ user, settings, toast, notifyMember }: { user: UserData, settings: any, toast: any, notifyMember: any }) {
+function DepositView({ user, settings, toast, notifyMember, logAction }: { user: UserData, settings: any, toast: any, notifyMember: any, logAction: any }) {
   const [members, setMembers] = useState<UserData[]>([]);
   const [selectedMember, setSelectedMember] = useState('');
   const [month, setMonth] = useState(String(new Date().getMonth() + 1).padStart(2, '0'));
@@ -1388,6 +1483,8 @@ function DepositView({ user, settings, toast, notifyMember }: { user: UserData, 
         setNote('');
         fetchStatus();
         fetchRecentHistory();
+        const m = members.find(mx => mx.id === selectedMember);
+        logAction(`টাকা জমা (এন্ট্রি): ${m?.full_name} - ${cleanAmount} TK (${MB[parseInt(month)-1]} ${year})`);
       } else {
         throw error;
       }
@@ -1614,7 +1711,7 @@ function DepositView({ user, settings, toast, notifyMember }: { user: UserData, 
   );
 }
 
-function ProfileView({ user, targetUser, onUpdate, toast }: { user: UserData, targetUser?: UserData | null, onUpdate: () => void, toast: any }) {
+function ProfileView({ user, targetUser, onUpdate, toast, logAction }: { user: UserData, targetUser?: UserData | null, onUpdate: () => void, toast: any, logAction: any }) {
   const displayUser = targetUser || user;
   const isAdminEdit = targetUser !== null && targetUser !== undefined && (user.role !== 'member' || user.email === 'youngsterwelfarefoundationywf@gmail.com');
 
@@ -1667,6 +1764,7 @@ function ProfileView({ user, targetUser, onUpdate, toast }: { user: UserData, ta
       if (error) throw error;
       setMsg('সফল: প্রোফাইল আপডেট হয়েছে');
       onUpdate();
+      logAction(`প্রোফাইল আপডেট করা হয়েছে: ${displayUser.full_name}`);
     } catch (e: any) {
       setMsg(`ত্রুটি: ${e.message}`);
     } finally {
@@ -1999,6 +2097,7 @@ function SettingsView({ user, onUpdate, setActiveTab, toast }: { user: UserData,
       if (error) throw error;
       
       toast('সেটিংস সেভ করা হয়েছে', 's');
+      logAction('পেমেন্ট সেটিংস আপডেট করা হয়েছে');
       if (onUpdate) onUpdate();
     } catch (err: any) {
       toast('ত্রুটি সেটিংস সেভ করতে: ' + err.message, 'e');
@@ -2019,6 +2118,7 @@ function SettingsView({ user, onUpdate, setActiveTab, toast }: { user: UserData,
       if (error) throw error;
       
       toast('সেটিংস আপডেট করা হয়েছে', 's');
+      logAction('চাঁদা ও জরিমানা সেটিংস আপডেট করা হয়েছে');
       if (onUpdate) onUpdate();
     } catch (err: any) {
       toast('ত্রুটি সেটিংস আপডেট করতে: ' + err.message, 'e');
@@ -2163,7 +2263,7 @@ function SettingsView({ user, onUpdate, setActiveTab, toast }: { user: UserData,
   );
 }
 
-function FinanceView({ user, type, title, toast }: { user: UserData, type: 'profit' | 'expense' | 'investment', title?: string, toast: any }) {
+function FinanceView({ user, type, title, toast, logAction }: { user: UserData, type: 'profit' | 'expense' | 'investment', title?: string, toast: any, logAction: any }) {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -2228,6 +2328,7 @@ function FinanceView({ user, type, title, toast }: { user: UserData, type: 'prof
         }).eq('ref_id', editingItem.id);
 
         toast('সফলভাবে আপডেট করা হয়েছে', 's');
+        logAction(`${gT()} আপডেট করা হয়েছে: ${cleanAmount} TK (${note})`);
         setIsModalOpen(false);
         setEditingItem(null);
         fetchData();
@@ -2257,6 +2358,7 @@ function FinanceView({ user, type, title, toast }: { user: UserData, type: 'prof
         }
 
         toast('সফলভাবে যোগ করা হয়েছে', 's');
+        logAction(`${gT()} যোগ করা হয়েছে: ${cleanAmount} TK (${note})`);
         setIsModalOpen(false);
         fetchData();
       }
@@ -2397,7 +2499,7 @@ function FinanceView({ user, type, title, toast }: { user: UserData, type: 'prof
   );
 }
 
-function PaymentRequestsView({ user, toast, notifyMember }: { user: UserData, toast: any, notifyMember: any }) {
+function PaymentRequestsView({ user, toast, notifyMember, logAction }: { user: UserData, toast: any, notifyMember: any, logAction: any }) {
   const [reqs, setReqs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -2482,6 +2584,7 @@ function PaymentRequestsView({ user, toast, notifyMember }: { user: UserData, to
       if (reqError) throw reqError;
       
       toast(action === 'approve' ? 'পেমেন্ট অনুমোদিত হয়েছে' : 'পেমেন্ট প্রত্যাখ্যাত হয়েছে', 's');
+      logAction(`পেমেন্ট রিকোয়েস্ট ${action === 'approve' ? 'অনুমোদিত' : 'প্রত্যাখ্যাত'} করা হয়েছে: ${req.amount} TK (${req.member?.full_name})`);
       fetchReqs();
     } catch (err: any) {
       console.error('Action error:', err);
