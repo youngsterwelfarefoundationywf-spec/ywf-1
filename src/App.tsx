@@ -205,7 +205,7 @@ const StatCard = ({ icon: Icon, label, value, sub, colorClass, onClick, isCurren
   <button 
     onClick={onClick}
     disabled={!onClick}
-    className={`bg-[#0a120e] border border-[#1a2e22] rounded-[1.5rem] p-5 lg:p-6 text-left group hover:border-brand-primary/30 transition-all duration-300 relative overflow-hidden ${onClick ? 'cursor-pointer active:scale-[0.98]' : 'cursor-default'}`}
+    className={`bg-[#0a120e] border border-[#1a2e22] rounded-[2rem] p-5 lg:p-6 text-left group hover:border-brand-primary/30 transition-all duration-300 relative overflow-hidden ${onClick ? 'cursor-pointer active:scale-[0.98]' : 'cursor-default'}`}
   >
     <div className={`w-10 h-10 lg:w-12 lg:h-12 rounded-xl flex items-center justify-center mb-4 lg:mb-6 shadow-xl ${colorClass}`}>
       <Icon className="w-5 h-5 lg:w-6 lg:h-6" />
@@ -404,7 +404,7 @@ function App() {
         console.log('Loading timed out, forcing UI');
         setLoading(false);
       }
-    }, 10000);
+    }, 5000);
     return () => clearTimeout(timeout);
   }, [loading]);
 
@@ -621,7 +621,7 @@ function App() {
           
           <button 
             onClick={() => setShowDevProfile(false)}
-            className="mt-8 w-full bg-brand-light hover:bg-brand-primary text-white font-bold py-3 rounded-2xl transition-all shadow-lg shadow-brand-light/20"
+            className="mt-8 w-full bg-brand-primary hover:bg-brand-primary/90 text-black font-black text-xs uppercase tracking-widest py-4 rounded-2xl transition-all shadow-xl shadow-brand-primary/20 active:scale-95"
           >
             ধন্যবাদ
           </button>
@@ -778,6 +778,10 @@ function Dashboard({ user, setActiveTab }: { user: UserData, setActiveTab: (tab:
       }
     } catch (e) {
       console.error(e);
+      setStats({ 
+        totDep: 0, totInv: 0, totProf: 0, totExp: 0, totFines: 0, 
+        activeInvsCount: 0, currentBalance: 0, netBalance: 0, thisMonthDep: 0, pendingReqs: 0 
+      });
     } finally {
       setLoading(false);
     }
@@ -1098,9 +1102,9 @@ function MembersView({ user, onSelectMember, toast }: { user: UserData, onSelect
           {(user.role === 'super_admin' || user.email === 'youngsterwelfarefoundationywf@gmail.com') && (
             <button 
               onClick={() => setIsModalOpen(true)}
-              className="bg-brand-primary text-black px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest flex items-center gap-2 shadow-xl shadow-brand-primary/10 transition-all active:scale-95 whitespace-nowrap"
+              className="bg-brand-primary hover:bg-brand-primary/90 text-black px-8 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-xl shadow-brand-primary/20 transition-all active:scale-95 whitespace-nowrap"
             >
-              <Plus className="w-4 h-4" /> নতুন সদস্য
+              <Plus className="w-5 h-5" /> নতুন সদস্য যোগ করুন
             </button>
           )}
        </div>
@@ -1229,14 +1233,19 @@ function MembersView({ user, onSelectMember, toast }: { user: UserData, onSelect
                   placeholder="সম্পূর্ণ ঠিকানা" 
                 />
              </div>
-             <div className="flex gap-3 pt-2">
-                <button onClick={() => setIsModalOpen(false)} className="flex-1 bg-white/5 hover:bg-white/10 text-text-primary py-3 rounded-2xl text-xs font-bold transition-all">বাতিল</button>
+             <div className="flex gap-4 pt-4">
                 <button 
-                  onClick={handleCreateMember}
-                  disabled={addingMember}
-                  className="flex-[2] bg-brand-light hover:bg-brand-primary text-white py-3 rounded-2xl text-xs font-black shadow-lg shadow-brand-light/20 transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
+                  onClick={() => setIsModalOpen(false)} 
+                  className="flex-1 bg-white/5 border border-white/10 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-white/10 transition-all"
                 >
-                   {addingMember ? <div className="sp w-4 h-4" /> : <Plus className="w-4 h-4" />} সদস্য যোগ করুন
+                  বাতিল
+                </button>
+                <button 
+                  onClick={handleCreateMember} 
+                  disabled={addingMember}
+                  className="flex-[2] bg-brand-primary text-black py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-brand-primary/20 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
+                >
+                   {addingMember ? <div className="sp w-5 h-5 border-black/30 border-t-black" /> : <Plus className="w-5 h-5" />} সদস্য যোগ করুন
                 </button>
              </div>
           </div>
@@ -1454,7 +1463,7 @@ function DepositView({ user, settings, toast }: { user: UserData, settings: any,
                      disabled={loading}
                      className="w-full bg-brand-primary hover:bg-brand-primary/90 text-black py-4 rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-brand-primary/20 transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
                    >
-                     {loading ? <div className="sp w-5 h-5 border-black/30 border-t-black" /> : <CheckCircle2 className="w-5 h-5" />} জমা নিশ্চিত করুন
+                     {loading ? <div className="sp w-5 h-5 border-black/30 border-t-black" /> : <Plus className="w-5 h-5" />} জমা নিশ্চিত করুন
                    </button>
                 </div>
              </div>
@@ -1764,7 +1773,7 @@ function ProfileView({ user, targetUser, onUpdate, toast }: { user: UserData, ta
                         disabled={loading}
                         className="w-full md:w-auto px-12 bg-brand-primary hover:bg-brand-primary/90 text-black py-4 rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-brand-primary/20 transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
                       >
-                         {loading ? <div className="sp w-5 h-5 border-black/30 border-t-black" /> : <Save className="w-5 h-5" />} প্রোফাইল সেভ করুন
+                         {loading ? <div className="sp w-5 h-5 border-black/30 border-t-black" /> : <Save className="w-5 h-5" />} তথ্য সেভ করুন
                       </button>
                    </div>
                 </div>
@@ -1792,9 +1801,9 @@ function ProfileView({ user, targetUser, onUpdate, toast }: { user: UserData, ta
                    <button 
                      onClick={handlePasswordChange}
                      disabled={passLoading}
-                     className="w-full bg-white/5 hover:bg-white/10 text-white py-4 rounded-2xl text-xs font-black uppercase tracking-widest border border-white/10 transition-all active:scale-95 disabled:opacity-50"
+                     className="w-full bg-white/5 hover:bg-white/10 text-white py-4 rounded-2xl text-xs font-black uppercase tracking-widest border border-white/10 transition-all active:scale-95 disabled:opacity-50 shadow-xl shadow-white/5"
                    >
-                      {passLoading ? <div className="sp w-4 h-4" /> : 'পাসওয়ার্ড পরিবর্তন'}
+                      {passLoading ? <div className="sp w-5 h-5 border-white/30 border-t-white" /> : 'পাসওয়ার্ড পরিবর্তন করুন'}
                    </button>
                 </div>
 
@@ -1997,9 +2006,9 @@ function SettingsView({ user, onUpdate, setActiveTab, toast }: { user: UserData,
               <button 
                 onClick={handleSavePayments} 
                 disabled={saving}
-                className="w-full bg-brand-light hover:bg-brand-primary text-white py-3 rounded-xl font-bold text-sm shadow-lg shadow-brand-light/20 mt-2 flex items-center justify-center gap-2 transition-all active:scale-95"
+                className="w-full bg-brand-primary hover:bg-brand-primary/90 text-black py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-brand-primary/20 mt-2 flex items-center justify-center gap-2 transition-all active:scale-95"
               >
-                 <Save className="w-4 h-4" /> {saving ? 'সংরক্ষণ হচ্ছে...' : 'সংরক্ষণ করুন'}
+                 <Save className="w-5 h-5" /> {saving ? 'সংরক্ষণ হচ্ছে...' : 'পেমেন্ট সেভ করুন'}
               </button>
            </div>
         </Card>
@@ -2011,9 +2020,9 @@ function SettingsView({ user, onUpdate, setActiveTab, toast }: { user: UserData,
               <button 
                 onClick={handleSaveFines} 
                 disabled={saving}
-                className="w-full bg-brand-light hover:bg-brand-primary text-white py-3 rounded-xl font-bold text-sm shadow-lg shadow-brand-light/20 flex items-center justify-center gap-2 transition-all active:scale-95"
+                className="w-full bg-brand-primary hover:bg-brand-primary/90 text-black py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-brand-primary/20 flex items-center justify-center gap-2 transition-all active:scale-95"
               >
-                 <Save className="w-4 h-4" /> {saving ? 'সংরক্ষণ হচ্ছে...' : 'চাঁদা আপডেট করুন'}
+                 <Save className="w-5 h-5" /> {saving ? 'সংরক্ষণ হচ্ছে...' : 'চাঁদা সেটিংস আপডেট করুন'}
               </button>
            </div>
         </Card>
@@ -2241,9 +2250,9 @@ function FinanceView({ user, type, title, toast }: { user: UserData, type: 'prof
 
   const gT = () => {
      if (title) return title;
-     if (type === 'profit') return 'লাভের রেকর্ড';
-     if (type === 'expense') return 'খরচের রেকর্ড';
-     return 'বিনিয়োগ রেকর্ড';
+     if (type === 'profit') return 'লাভ';
+     if (type === 'expense') return 'খরচ';
+     return 'বিনিয়োগ';
   };
 
   if (loading && data.length === 0) return <div className="flex justify-center py-20"><div className="sp" /></div>;
@@ -2256,8 +2265,11 @@ function FinanceView({ user, type, title, toast }: { user: UserData, type: 'prof
             <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">মোট: ৳{fmt(data.reduce((s, x) => s + x.amount, 0))}</p>
           </div>
           {(user.role !== 'member' || user.email === 'youngsterwelfarefoundationywf@gmail.com') && (
-            <button onClick={openNew} className="bg-brand-light text-white px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 transition-all active:scale-95">
-               <Plus className="w-4 h-4" /> নতুন এন্ট্রি
+            <button 
+              onClick={openNew} 
+              className="bg-brand-primary hover:bg-brand-primary/90 text-black px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest flex items-center gap-2 shadow-xl shadow-brand-primary/20 transition-all active:scale-95"
+            >
+               <Plus className="w-5 h-5" /> {gT()} যোগ করুন
             </button>
           )}
        </div>
@@ -2308,9 +2320,21 @@ function FinanceView({ user, type, title, toast }: { user: UserData, type: 'prof
                 <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest ml-1">বিবরণ *</label>
                 <textarea value={note || ''} onChange={e => setNote(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 px-4 text-sm text-white outline-none focus:border-brand-light min-h-24" />
              </div>
-             <button onClick={handleAdd} className="w-full bg-brand-light text-white py-4 rounded-2xl font-black text-sm shadow-xl shadow-brand-light/20">
-               {editingItem ? 'আপডেট করুন' : 'সংরক্ষণ করুন'}
-             </button>
+             <div className="flex gap-4 pt-4">
+                <button 
+                  onClick={() => setIsModalOpen(false)} 
+                  className="flex-1 bg-white/5 border border-white/10 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-white/10 transition-all"
+                >
+                  বাতিল
+                </button>
+                <button 
+                  onClick={handleAdd} 
+                  disabled={loading}
+                  className="flex-1 bg-brand-primary text-black py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-brand-primary/20 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
+                >
+                   {loading ? <div className="sp w-5 h-5 border-black/30 border-t-black" /> : <Plus className="w-5 h-5" />} {editingItem ? 'আপডেট করুন' : gT() + ' নিশ্চিত করুন'}
+                </button>
+             </div>
           </div>
        </Modal>
     </div>
@@ -2435,8 +2459,18 @@ function PaymentRequestsView({ user, toast }: { user: UserData, toast: any }) {
                  <div className="text-[9px] text-text-dark font-medium">{fd(r.created_at)}</div>
                </div>
                <div className="flex gap-2">
-                 <button onClick={() => handleAction(r.id, 'reject', r)} className="p-2.5 bg-brand-danger/10 text-brand-danger rounded-xl hover:bg-brand-danger hover:text-white transition-all"><X className="w-5 h-5" /></button>
-                 <button onClick={() => handleAction(r.id, 'approve', r)} className="p-2.5 bg-green-500/10 text-green-500 rounded-xl hover:bg-green-500 hover:text-white transition-all"><CheckCircle className="w-5 h-5" /></button>
+                 <button 
+                   onClick={() => handleAction(r.id, 'reject', r)} 
+                   className="p-3 bg-brand-danger/10 text-brand-danger rounded-2xl hover:bg-brand-danger hover:text-white transition-all border border-brand-danger/20 flex items-center gap-2 px-4"
+                 >
+                    <X className="w-5 h-5" /> <span className="text-[10px] font-black uppercase">বাতিল</span>
+                 </button>
+                 <button 
+                   onClick={() => handleAction(r.id, 'approve', r)} 
+                   className="p-3 bg-green-500/10 text-green-500 rounded-2xl hover:bg-green-500 hover:text-white transition-all border border-green-500/20 flex items-center gap-2 px-4"
+                 >
+                    <CheckCircle className="w-5 h-5" /> <span className="text-[10px] font-black uppercase">অনুমোদন</span>
+                 </button>
                </div>
             </div>
           </div>
@@ -2529,7 +2563,7 @@ function PayNowView({ user, settings, toast }: { user: UserData, settings: any, 
              <button 
                onClick={submitRequest}
                disabled={submitting}
-               className="w-full bg-brand-light text-white py-4 rounded-2xl font-black text-sm shadow-xl shadow-brand-light/20 transition-all active:scale-95"
+               className="w-full bg-brand-primary hover:bg-brand-primary/90 text-black py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-brand-primary/20 transition-all active:scale-95 disabled:opacity-50"
              >
                 {submitting ? 'পাঠানো হচ্ছে...' : 'পেমেন্ট রিকোয়েস্ট পাঠান'}
              </button>
@@ -2853,7 +2887,12 @@ function StatementView({ user, userId, toast }: { user: UserData, userId?: strin
                   className="w-full bg-bg-secondary border border-white/10 rounded-2xl p-4 text-xs focus:border-brand-light outline-none text-white min-h-[80px]"
                 />
              </div>
-             <button onClick={handleEdit} className="w-full bg-brand-light text-white py-4 rounded-2xl font-black shadow-xl transition-all active:scale-95">আপডেট করুন</button>
+             <button 
+               onClick={handleEdit} 
+               className="w-full bg-brand-primary hover:bg-brand-primary/90 text-black py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-brand-primary/20 transition-all active:scale-95"
+             >
+                আপডেট করুন
+             </button>
           </div>
        </Modal>
     </div>
@@ -2956,19 +2995,19 @@ function LoginPage({ onLogin }: { onLogin: () => void }) {
           <div className="flex bg-white/5 p-1 rounded-xl gap-1 mb-8">
             <button 
               onClick={() => setRole('member')}
-              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${role === 'member' ? 'bg-brand-light text-white shadow-lg' : 'text-text-muted hover:text-white'}`}
+              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${role === 'member' ? 'bg-brand-primary text-black shadow-lg shadow-brand-primary/20' : 'text-text-muted hover:text-white'}`}
             >
               সদস্য
             </button>
             <button 
               onClick={() => setRole('admin')}
-              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${role === 'admin' ? 'bg-brand-light text-white shadow-lg' : 'text-text-muted hover:text-white'}`}
+              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${role === 'admin' ? 'bg-brand-primary text-black shadow-lg shadow-brand-primary/20' : 'text-text-muted hover:text-white'}`}
             >
               অ্যাডমিন
             </button>
             <button 
               onClick={() => setRole('super_admin')}
-              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${role === 'super_admin' ? 'bg-brand-light text-white shadow-lg' : 'text-text-muted hover:text-white'}`}
+              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${role === 'super_admin' ? 'bg-brand-primary text-black shadow-lg shadow-brand-primary/20' : 'text-text-muted hover:text-white'}`}
             >
               সুপার
             </button>
@@ -3011,9 +3050,9 @@ function LoginPage({ onLogin }: { onLogin: () => void }) {
 
             <button 
               disabled={loading}
-              className="w-full bg-brand-light hover:bg-brand-primary disabled:opacity-50 text-white font-black text-sm py-4 rounded-2xl shadow-xl shadow-brand-light/30 transition-all flex items-center justify-center gap-2"
+              className="w-full bg-brand-primary hover:bg-brand-primary/90 disabled:opacity-50 text-black font-black text-sm py-4 rounded-2xl shadow-xl shadow-brand-primary/20 transition-all flex items-center justify-center gap-2"
             >
-              {loading ? <div className="sp w-4 h-4 border-2" /> : <LogOut className="w-4 h-4" />}
+              {loading ? <div className="sp w-5 h-5 border-black/30 border-t-black" /> : <LogOut className="w-5 h-5" />}
               লগইন করুন
             </button>
           </form>
