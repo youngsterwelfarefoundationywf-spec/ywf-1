@@ -60,11 +60,17 @@ CREATE TABLE IF NOT EXISTS ywf_fines (
 CREATE TABLE IF NOT EXISTS ywf_profits (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     amount DECIMAL NOT NULL,
+    investment_id UUID REFERENCES ywf_investments(id) ON DELETE SET NULL,
+    month_year TEXT, -- YYYY-MM
     note TEXT,
     date DATE DEFAULT CURRENT_DATE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Ensure columns exist if table was created earlier
+ALTER TABLE ywf_profits ADD COLUMN IF NOT EXISTS investment_id UUID REFERENCES ywf_investments(id) ON DELETE SET NULL;
+ALTER TABLE ywf_profits ADD COLUMN IF NOT EXISTS month_year TEXT;
 
 -- 6. Expenses Table
 CREATE TABLE IF NOT EXISTS ywf_expenses (
@@ -80,6 +86,8 @@ CREATE TABLE IF NOT EXISTS ywf_expenses (
 CREATE TABLE IF NOT EXISTS ywf_investments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     amount DECIMAL NOT NULL,
+    name TEXT, -- Added for descriptive naming
+    image_url TEXT, -- Added for proof/photo
     note TEXT,
     status TEXT DEFAULT 'active' CHECK (status IN ('active', 'completed')),
     date DATE DEFAULT CURRENT_DATE,
@@ -148,12 +156,13 @@ INSERT INTO ywf_settings (key, value) VALUES
 ('admin_contact', '01XXXXXXXXX')
 ON CONFLICT (key) DO NOTHING;
 
--- Grant super_admin role to the project owner
-DELETE FROM ywf_users WHERE email = 'youngsterwelfarefoundationywf@gmail.com';
--- Note: The auth.users entry remains, we just ensure the ywf_users record is clean and updated if it exists
--- But since we can't easily insert into ywf_users without a UUID from auth.users here,
--- we'll rely on the app to upsert or just update if it exists.
-UPDATE ywf_users SET role = 'super_admin' WHERE email = 'youngsterwelfarefoundationywf@gmail.com';
+-- Ensure super_admin role for the foundation email
+-- This uses an upsert pattern if possible, or just ensures the existing record is updated
+DO $$
+BEGIN
+  -- If record exists, make sure it's a super_admin
+  UPDATE ywf_users SET role = 'super_admin' WHERE email IN ('youngsterwelfarefoundationywf@gmail.com', 'risevoiceforchange2025@gmail.com');
+END $$;
 
 -- Refresh the PostgREST schema cache
 NOTIFY pgrst, 'reload schema';
@@ -172,24 +181,70 @@ ALTER TABLE ywf_audit_log ENABLE ROW LEVEL SECURITY;
 -- 11. Define Policies
 
 -- Security Definer Functions to avoid RLS recursion
-CREATE OR REPLACE FUNCTION get_my_role() RETURNS text AS $$
-  SELECT role FROM ywf_users WHERE id = auth.uid();
-$$ LANGUAGE sql STABLE SECURITY DEFINER;
-
 CREATE OR REPLACE FUNCTION is_admin() RETURNS boolean AS $$
-  SELECT role IN ('admin', 'super_admin') FROM ywf_users WHERE id = auth.uid();
-$$ LANGUAGE sql STABLE SECURITY DEFINER;
+DECLARE
+  current_role text;
+  caller_email text;
+BEGIN
+  -- Get email from JWT
+  caller_email := lower(COALESCE(auth.jwt() ->> 'email', ''));
+  
+  -- Bypass for foundation emails
+  IF caller_email IN ('youngsterwelfarefoundationywf@gmail.com', 'risevoiceforchange2025@gmail.com') THEN
+    RETURN true;
+  END IF;
+
+  -- Get role directly bypassing RLS via SECURITY DEFINER
+  SELECT role INTO current_role FROM ywf_users WHERE id = auth.uid();
+  
+  RETURN current_role IN ('admin', 'super_admin');
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
 
 CREATE OR REPLACE FUNCTION is_super_admin() RETURNS boolean AS $$
-  SELECT role = 'super_admin' FROM ywf_users WHERE id = auth.uid();
-$$ LANGUAGE sql STABLE SECURITY DEFINER;
+DECLARE
+  current_role text;
+  caller_email text;
+BEGIN
+  -- Get email from JWT
+  caller_email := lower(COALESCE(auth.jwt() ->> 'email', ''));
+  
+  -- Bypass for foundation emails
+  IF caller_email IN ('youngsterwelfarefoundationywf@gmail.com', 'risevoiceforchange2025@gmail.com') THEN
+    RETURN true;
+  END IF;
+
+  -- Get role directly bypassing RLS via SECURITY DEFINER
+  SELECT role INTO current_role FROM ywf_users WHERE id = auth.uid();
+  
+  RETURN current_role = 'super_admin';
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
 
 -- Policies for ywf_users: 
-CREATE POLICY "Users can view own profile" ON ywf_users FOR SELECT USING (auth.uid() = id);
-CREATE POLICY "Users can insert own profile" ON ywf_users FOR INSERT WITH CHECK (auth.uid() = id);
-CREATE POLICY "Users can update own profile" ON ywf_users FOR UPDATE USING (auth.uid() = id);
-CREATE POLICY "Admins can view all profiles_v3" ON ywf_users FOR SELECT USING ( is_admin() );
-CREATE POLICY "Admins can update profiles_v3" ON ywf_users FOR UPDATE USING ( is_admin() );
+DROP POLICY IF EXISTS "Users view own profile" ON ywf_users;
+DROP POLICY IF EXISTS "Users insert own profile" ON ywf_users;
+DROP POLICY IF EXISTS "Users update own profile" ON ywf_users;
+DROP POLICY IF EXISTS "Admins manage all" ON ywf_users;
+DROP POLICY IF EXISTS "Foundation Bypass Policy" ON ywf_users;
+
+-- Explicit policy for Foundation Admin bypass with casing safety
+CREATE POLICY "Foundation Bypass Policy" ON ywf_users 
+FOR ALL 
+USING (lower(COALESCE(auth.jwt() ->> 'email', '')) IN ('youngsterwelfarefoundationywf@gmail.com', 'risevoiceforchange2025@gmail.com'))
+WITH CHECK (lower(COALESCE(auth.jwt() ->> 'email', '')) IN ('youngsterwelfarefoundationywf@gmail.com', 'risevoiceforchange2025@gmail.com'));
+
+-- General policies
+CREATE POLICY "Users view own profile" ON ywf_users 
+FOR SELECT USING (
+  auth.uid() = id 
+  OR 
+  lower(email) = lower(COALESCE(auth.jwt() ->> 'email', ''))
+);
+
+CREATE POLICY "Users insert own profile" ON ywf_users FOR INSERT WITH CHECK (auth.uid() = id);
+CREATE POLICY "Users update own profile" ON ywf_users FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Admins manage all" ON ywf_users FOR ALL USING ( is_admin() );
 
 -- Policies for ywf_settings:
 CREATE POLICY "Settings are viewable by everyone" ON ywf_settings FOR SELECT USING (true);
@@ -217,3 +272,9 @@ CREATE POLICY "Admins can manage all requests_v3" ON ywf_payment_requests FOR AL
 
 -- Policies for ywf_audit_log:
 CREATE POLICY "Only admins can view logs_v3" ON ywf_audit_log FOR SELECT USING ( is_admin() );
+CREATE POLICY "Only super admins can delete logs" ON ywf_audit_log FOR DELETE USING ( is_super_admin() );
+
+-- Ensure all required columns and constraints exist
+ALTER TABLE ywf_audit_log ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES ywf_users(id);
+ALTER TABLE ywf_profits ADD COLUMN IF NOT EXISTS investment_id UUID REFERENCES ywf_investments(id) ON DELETE SET NULL;
+ALTER TABLE ywf_profits ADD COLUMN IF NOT EXISTS month_year TEXT;

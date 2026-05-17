@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from './lib/supabase';
 import { User } from '@supabase/supabase-js';
 import { 
@@ -216,6 +216,48 @@ const StatCard = ({ icon: Icon, label, value, sub, colorClass, onClick, isCurren
   </button>
 );
 
+const LiveClock = () => {
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const timeStr = time.toLocaleTimeString('bn-BD', { 
+    hour: '2-digit', 
+    minute: '2-digit', 
+    second: '2-digit', 
+    hour12: true 
+  });
+  
+  const dateStr = time.toLocaleDateString('bn-BD', { 
+    day: 'numeric', 
+    month: 'long', 
+    year: 'numeric' 
+  });
+  
+  const dayStr = time.toLocaleDateString('bn-BD', { 
+    weekday: 'long' 
+  });
+
+  return (
+    <div className="flex items-center gap-3 bg-white/[0.03] border border-white/5 px-4 py-2 rounded-2xl">
+      <div className="hidden sm:flex flex-col items-end text-right">
+        <div className="text-[11px] font-black text-white tabular-nums tracking-tight leading-none mb-1">
+          {timeStr}
+        </div>
+        <div className="text-[8px] text-text-muted font-black uppercase tracking-widest leading-none">
+          {dayStr}, {dateStr}
+        </div>
+      </div>
+      <div className="w-8 h-8 rounded-xl bg-brand-primary/10 flex items-center justify-center text-brand-primary">
+        <Clock className="w-4 h-4" />
+      </div>
+    </div>
+  );
+};
+
 // --- Main App ---
 
 // --- Toast System ---
@@ -246,6 +288,7 @@ function App() {
   });
   const [selectedMemberForProfile, setSelectedMemberForProfile] = useState<UserData | null>(null);
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
+  const fetchingEmailRef = useRef<string | null>(null);
 
   const fetchSettings = async () => {
     const { data, error } = await supabase.from('ywf_settings').select('*');
@@ -341,58 +384,61 @@ function App() {
 
   const fetchUserData = async (email: string) => {
     if (!email) return;
+    const cleanEmail = email.trim().toLowerCase();
+    const isFoundation = FOUNDATION_EMAILS.includes(cleanEmail);
+
+    if (fetchingEmailRef.current === cleanEmail) return;
+    fetchingEmailRef.current = cleanEmail;
+
     try {
       setLoading(true);
-      const { data: users, error } = await supabase
+      const { data: { session: s } } = await supabase.auth.getSession();
+      if (!s) {
+        setLoading(false);
+        fetchingEmailRef.current = null;
+        return;
+      }
+
+      // STRICT READ ONLY - No inserts/upserts here ever.
+      const { data: user, error } = await supabase
         .from('ywf_users')
         .select('*')
-        .eq('email', email.trim().toLowerCase());
+        .eq('id', s.user.id)
+        .single();
 
-      if (error) throw error;
-
-      if (users && users.length > 0) {
-        if (!users[0].is_active) {
-          console.warn('User is inactive:', email);
-          toast('আপনার অ্যাকাউন্টটি সাময়িকভাবে বন্ধ আছে। অ্যাডমিনের সাথে যোগাযোগ করুন।', 'e');
-          setUserData(null);
-          await supabase.auth.signOut();
-          return;
-        }
-        setUserData(users[0]);
-      } else {
-        // Try to create profile
-        const { data: { session: s } } = await supabase.auth.getSession();
-        if (!s) {
-          setUserData(null);
-          return;
-        }
-
-        const isFoundation = email.toLowerCase() === 'youngsterwelfarefoundationywf@gmail.com';
-        const { data: newUser, error: createError } = await supabase
+      if (error || !user) {
+        // Fallback: Check by email
+        const { data: byEmail } = await supabase
           .from('ywf_users')
-          .insert({
-             id: s.user.id,
-             email: email.trim().toLowerCase(),
-             full_name: s.user.user_metadata?.full_name || (isFoundation ? 'Foundation Admin' : 'নতুন সদস্য'),
-             role: isFoundation ? 'super_admin' : 'member',
-             is_active: true
-          })
-          .select()
+          .select('*')
+          .eq('email', cleanEmail)
           .single();
-
-        if (createError) {
-          console.error('Create profile error:', createError);
-          toast('আপনার প্রোফাইল তৈরি করা সম্ভব হয়নি। অ্যাডমিনের সাথে যোগাযোগ করুন।', 'e');
-          setUserData(null);
+        
+        if (byEmail) {
+          // Temporarily use email matched record even if IDs mismatch
+          // This avoids the 409 conflict from trying to update ID during high-traffic or preview loads
+          setUserData(byEmail);
+        } else if (isFoundation) {
+          // Synthetic record for recovery
+          setUserData({
+            id: s.user.id,
+            email: cleanEmail,
+            full_name: 'Foundation Admin (Recovery)',
+            role: 'super_admin',
+            is_active: true
+          });
         } else {
-          setUserData(newUser);
+          console.warn('Profile not found for:', cleanEmail);
+          setUserData(null);
         }
+      } else {
+        setUserData(user);
       }
     } catch (err: any) {
-      console.error('Fetch user data exception:', err);
-      toast(`প্রোফাইল লোড করা যায়নি: ${err.message}`, 'e');
+      console.error('fetchUserData exception:', err);
       setUserData(null);
     } finally {
+      fetchingEmailRef.current = null;
       setLoading(false);
     }
   };
@@ -545,8 +591,28 @@ function App() {
     );
   }
 
-  if (!session || !userData) {
-    return <LoginPage onLogin={() => setLoading(true)} />;
+  if (!session) {
+    return <LoginPage onLogin={() => {}} />;
+  }
+
+  if (!userData) {
+    return (
+      <div className="min-h-screen bg-bg-main flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-16 h-16 bg-brand-danger/20 rounded-2xl flex items-center justify-center mb-6">
+          <AlertTriangle className="w-8 h-8 text-brand-danger" />
+        </div>
+        <h2 className="text-xl font-black text-white mb-2">প্রোফাইল পাওয়া যায়নি</h2>
+        <p className="text-text-muted text-sm max-w-xs mb-8">
+          সিস্টেমে আপনার ইমেইল দিয়ে কোনো সদস্য তালিকাভুক্ত নেই। অনুগ্রহ করে অ্যাডমিনের সাথে যোগাযোগ করুন।
+        </p>
+        <button 
+          onClick={() => supabase.auth.signOut()}
+          className="bg-white/10 hover:bg-white/20 text-white px-8 py-3 rounded-2xl font-bold transition-all flex items-center gap-2"
+        >
+          <LogOut className="w-4 h-4" /> লগ আউট
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -675,6 +741,7 @@ function App() {
               <p className="text-[10px] text-text-muted uppercase tracking-wider font-bold">Youngster Welfare Foundation</p>
             </div>
           </div>
+          <LiveClock />
         </header>
 
         <div className="flex-1 p-6">
@@ -807,22 +874,22 @@ function renderTabContent(
     case 'deposit': return <DepositView user={user} settings={settings} toast={toast} notifyMember={notifyMember} logAction={logAction} />;
     case 'profile': return <ProfileView user={user} targetUser={selectedMemberForProfile} onUpdate={() => { refreshUser(); setSelectedMemberForProfile(null); if(selectedMemberForProfile) setActiveTab('members'); }} toast={toast} logAction={logAction} />;
     case 'requests': {
-      if (user.role === 'admin' && user.email !== 'youngsterwelfarefoundationywf@gmail.com') return <Dashboard user={user} setActiveTab={setActiveTab} />;
+      if (user.role === 'admin' && !FOUNDATION_EMAILS.includes(user.email)) return <Dashboard user={user} setActiveTab={setActiveTab} />;
       return <PaymentRequestsView user={user} toast={toast} notifyMember={notifyMember} logAction={logAction} />;
     }
     case 'payNow': return <PayNowView user={user} settings={settings} toast={toast} />;
     case 'myStatement': return <StatementView user={user} userId={user.id} toast={toast} />;
     case 'reports': return <StatementView user={user} toast={toast} />;
     case 'investments': {
-      if (user.role === 'admin' && user.email !== 'youngsterwelfarefoundationywf@gmail.com') return <Dashboard user={user} setActiveTab={setActiveTab} />;
+      if (user.role === 'admin' && !FOUNDATION_EMAILS.includes(user.email)) return <Dashboard user={user} setActiveTab={setActiveTab} />;
       return <FinanceView user={user} type="investment" toast={toast} logAction={logAction} />;
     }
     case 'profits': {
-      if (user.role === 'admin' && user.email !== 'youngsterwelfarefoundationywf@gmail.com') return <Dashboard user={user} setActiveTab={setActiveTab} />;
+      if (user.role === 'admin' && !FOUNDATION_EMAILS.includes(user.email)) return <Dashboard user={user} setActiveTab={setActiveTab} />;
       return <FinanceView user={user} type="profit" toast={toast} logAction={logAction} />;
     }
     case 'expenses': {
-      if (user.role === 'admin' && user.email !== 'youngsterwelfarefoundationywf@gmail.com') return <Dashboard user={user} setActiveTab={setActiveTab} />;
+      if (user.role === 'admin' && !FOUNDATION_EMAILS.includes(user.email)) return <Dashboard user={user} setActiveTab={setActiveTab} />;
       return <FinanceView user={user} type="expense" toast={toast} logAction={logAction} />;
     }
     case 'memberInv': return (
@@ -832,11 +899,11 @@ function renderTabContent(
       </div>
     );
     case 'audit': {
-      if (user.role === 'admin' && user.email !== 'youngsterwelfarefoundationywf@gmail.com') return <Dashboard user={user} setActiveTab={setActiveTab} />;
-      return <AuditView user={user} />;
+      if (user.role === 'admin' && !FOUNDATION_EMAILS.includes(user.email)) return <Dashboard user={user} setActiveTab={setActiveTab} />;
+      return <AuditView user={user} toast={toast} />;
     }
     case 'settings': {
-      if (user.role !== 'super_admin' && user.email !== 'youngsterwelfarefoundationywf@gmail.com') return <Dashboard user={user} setActiveTab={setActiveTab} />;
+      if (user.role !== 'super_admin' && !FOUNDATION_EMAILS.includes(user.email)) return <Dashboard user={user} setActiveTab={setActiveTab} />;
       return <SettingsView user={user} onUpdate={refreshUser} setActiveTab={setActiveTab} toast={toast} logAction={logAction} />;
     }
     default: return (
@@ -1253,7 +1320,7 @@ function MembersView({ user, onSelectMember, toast, logAction }: { user: UserDat
              <h2 className="text-3xl font-black text-white tracking-tight">সদস্যগণ</h2>
              <p className="text-xs text-text-muted">সংগঠনের সকল নিবন্ধিত সদস্যদের তালিকা</p>
           </div>
-          {(user.role === 'super_admin' || user.email === 'youngsterwelfarefoundationywf@gmail.com') && (
+          {(user.role === 'super_admin' || FOUNDATION_EMAILS.includes(user.email)) && (
             <button 
               onClick={() => setIsModalOpen(true)}
               className="bg-brand-primary hover:bg-brand-primary/90 text-black px-8 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-xl shadow-brand-primary/20 transition-all active:scale-95 whitespace-nowrap"
@@ -1319,7 +1386,7 @@ function MembersView({ user, onSelectMember, toast, logAction }: { user: UserDat
                        >
                          <Edit2 className="w-4 h-4" />
                        </button>
-                       {(user.role === 'super_admin' || user.email === 'youngsterwelfarefoundationywf@gmail.com') && (
+                       {(user.role === 'super_admin' || FOUNDATION_EMAILS.includes(user.email)) && (
                          <button 
                            onClick={async (e) => {
                              e.stopPropagation();
@@ -1696,7 +1763,7 @@ function DepositView({ user, settings, toast, notifyMember, logAction }: { user:
                                <div className="text-[10px] text-text-muted uppercase font-bold tracking-widest">{new Date(h.created_at).toLocaleDateString()}</div>
                             </td>
                             <td className="px-6 py-4 text-right">
-                               {(user.role === 'super_admin' || user.email === 'youngsterwelfarefoundationywf@gmail.com') && (
+                               {(user.role === 'super_admin' || FOUNDATION_EMAILS.includes(user.email)) && (
                                   <button 
                                     onClick={() => deleteTxn(h.id)}
                                     className="p-2 text-text-muted hover:text-brand-danger transition-colors bg-white/5 rounded-lg hover:bg-brand-danger/10"
@@ -1718,7 +1785,7 @@ function DepositView({ user, settings, toast, notifyMember, logAction }: { user:
 
 function ProfileView({ user, targetUser, onUpdate, toast, logAction }: { user: UserData, targetUser?: UserData | null, onUpdate: () => void, toast: any, logAction: any }) {
   const displayUser = targetUser || user;
-  const isAdminEdit = targetUser !== null && targetUser !== undefined && (user.role !== 'member' || user.email === 'youngsterwelfarefoundationywf@gmail.com');
+  const isAdminEdit = targetUser !== null && targetUser !== undefined && (user.role !== 'member' || FOUNDATION_EMAILS.includes(user.email));
 
   const [fullName, setFullName] = useState(displayUser.full_name || '');
   const [phone, setPhone] = useState(displayUser.phone || '');
@@ -1837,7 +1904,7 @@ function ProfileView({ user, targetUser, onUpdate, toast, logAction }: { user: U
           </div>
 
           <div className="flex items-center gap-3">
-             {targetUser && (user.role !== 'member' || user.email === 'youngsterwelfarefoundationywf@gmail.com') && (
+             {targetUser && (user.role !== 'member' || FOUNDATION_EMAILS.includes(user.email)) && (
                 <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5">
                    <button 
                      onClick={() => setActiveSubTab('info')}
@@ -2000,7 +2067,7 @@ function ProfileView({ user, targetUser, onUpdate, toast, logAction }: { user: U
 }
 // --- Login Page ---
 
-function AuditView({ user }: { user: UserData }) {
+function AuditView({ user, toast }: { user: UserData, toast: any }) {
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -2009,27 +2076,104 @@ function AuditView({ user }: { user: UserData }) {
   }, []);
 
   const fetchLogs = async () => {
-    // If the table doesn't exist, this might fail gracefully in a real scenario
-    const { data } = await supabase.from('ywf_audit_log').select('*').order('created_at', { ascending: false }).limit(50);
-    if (data) setLogs(data);
-    setLoading(false);
+    setLoading(true);
+    try {
+      // Try with join first
+      const { data, error } = await supabase
+        .from('ywf_audit_log')
+        .select(`
+          *,
+          user:ywf_users(full_name)
+        `)
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.warn('Audit join fetch failed, falling back to simple select:', error.message);
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('ywf_audit_log')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (fallbackError) throw fallbackError;
+        if (fallbackData) setLogs(fallbackData);
+      } else if (data) {
+        setLogs(data);
+      }
+    } catch (err: any) {
+      console.error('Fetch logs error:', err.message);
+      toast('লগ লোড করতে সমস্যা হয়েছে', 'e');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteLog = async (id: string) => {
+    if (!confirm('আপনি কি এই রেকর্ডটি মুছে ফেলতে চান?')) return;
+    
+    try {
+      const { error } = await supabase.from('ywf_audit_log').delete().eq('id', id);
+      if (error) throw error;
+      setLogs(logs.filter(l => l.id !== id));
+    } catch (err: any) {
+      alert('মুছে ফেলতে সমস্যা হয়েছে: ' + err.message);
+    }
   };
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-black">সিস্টেম অডিট লগ</h2>
-      <div className="bg-bg-secondary border border-white/5 rounded-[2rem] overflow-hidden">
-        {loading ? <div className="p-20 flex justify-center"><div className="sp" /></div> : (
-          <div className="divide-y divide-white/5">
-            {logs.length === 0 ? <div className="p-20 text-center opacity-20"><History className="w-16 h-16 mx-auto mb-2" /><p>কোনো লগ পাওয়া যায়নি</p></div> : logs.map((l, i) => (
-              <div key={l.id} className="p-4 flex items-start gap-4 hover:bg-white/2 transition-all">
-                <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0 text-[10px] font-black text-text-dark">
-                  {i + 1}
+      <div className="flex flex-col gap-1">
+        <h2 className="text-3xl font-black text-white tracking-tight">অডিট লগ</h2>
+        <p className="text-xs text-text-muted font-bold uppercase tracking-[0.2em]">Youngster Welfare Foundation</p>
+      </div>
+
+      <div className="bg-[#0a0f0c] border border-white/5 rounded-[2.5rem] p-6 lg:p-8 shadow-2xl relative overflow-hidden">
+        <div className="flex justify-between items-center mb-8 px-2">
+          <h3 className="text-xl font-black text-white">অডিট লগ</h3>
+          <div className="bg-white/5 px-4 py-1.5 rounded-full border border-white/10">
+            <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">{logs.length} রেকর্ড</span>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="py-20 flex justify-center">
+            <div className="sp w-8 h-8 border-brand-primary" />
+          </div>
+        ) : (
+          <div className="space-y-1">
+            {logs.length === 0 ? (
+              <div className="py-20 text-center opacity-20">
+                <History className="w-16 h-16 mx-auto mb-4" />
+                <p className="text-sm font-bold">কোনো লগ পাওয়া যায়নি</p>
+              </div>
+            ) : logs.map((l) => (
+              <div key={l.id} className="group p-4 flex items-center gap-5 hover:bg-white/[0.03] rounded-2xl transition-all border border-transparent hover:border-white/5">
+                <div className="w-11 h-11 rounded-xl bg-white/5 flex items-center justify-center shrink-0 border border-white/5 group-hover:bg-brand-primary/10 group-hover:border-brand-primary/20 transition-all">
+                  <History className="w-5 h-5 text-text-muted group-hover:text-brand-primary transition-all" />
                 </div>
+                
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs text-text-primary font-medium">{l.action}</p>
-                  <p className="text-[10px] text-text-dark mt-1">{fdt(l.created_at)} • {l.user_email || 'System'}</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-black text-white whitespace-nowrap">
+                      {l.user?.full_name || l.user_email?.split('@')[0] || 'System'}
+                    </span>
+                    <span className="text-text-muted font-black">—</span>
+                    <span className="text-sm font-bold text-white/90 leading-tight">
+                      {l.action}
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-text-muted font-black uppercase tracking-widest mt-1.5 opacity-60">
+                    {fdt(l.created_at)}
+                  </div>
                 </div>
+
+                {user.role === 'super_admin' && (
+                  <button 
+                    onClick={() => handleDeleteLog(l.id)}
+                    className="opacity-0 group-hover:opacity-100 p-2.5 bg-brand-danger/10 text-brand-danger rounded-xl hover:bg-brand-danger hover:text-white transition-all shadow-sm"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -2252,17 +2396,7 @@ function SettingsView({ user, onUpdate, setActiveTab, toast, logAction }: { user
                <span className="text-[9px] font-black text-green-500 uppercase tracking-widest">Supabase Connected</span>
             </div>
          </div>
-         <p className="text-[10px] text-text-muted leading-relaxed font-medium">Youngster Welfare Foundation Fund Management System v2.5.0-pro. All transactions and user records are securely synchronized with Supabase PostgreSQL database in the Asian-East region.</p>
-         <div className="mt-4 flex gap-4 pt-4 border-t border-white/5">
-            <div>
-               <div className="text-[8px] font-black text-text-dark uppercase mb-1">ভার্সন</div>
-               <div className="text-[10px] font-bold text-white">2.5.0-pro</div>
-            </div>
-            <div>
-               <div className="text-[8px] font-black text-text-dark uppercase mb-1">এনভায়রনমেন্ট</div>
-               <div className="text-[10px] font-bold text-white">Production</div>
-            </div>
-         </div>
+         <p className="text-[10px] text-text-muted leading-relaxed font-medium">Youngster Welfare Foundation Fund Management System v2.5.0-pro. All transactions are securely processed and audited.</p>
       </div>
     </div>
   );
@@ -2270,16 +2404,29 @@ function SettingsView({ user, onUpdate, setActiveTab, toast, logAction }: { user
 
 function FinanceView({ user, type, title, toast, logAction }: { user: UserData, type: 'profit' | 'expense' | 'investment', title?: string, toast: any, logAction: any }) {
   const [data, setData] = useState<any[]>([]);
+  const [investments, setInvestments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [amount, setAmount] = useState('');
+  const [name, setName] = useState('');
   const [note, setNote] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [month, setMonth] = useState((new Date().getMonth() + 1).toString().padStart(2, '0'));
+  const [year, setYear] = useState(new Date().getFullYear().toString());
+  const [investmentId, setInvestmentId] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     fetchData();
+    if (type === 'profit') fetchInvestments();
   }, [type]);
+
+  const fetchInvestments = async () => {
+    const { data } = await supabase.from('ywf_investments').select('*').order('name');
+    if (data) setInvestments(data);
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -2288,14 +2435,35 @@ function FinanceView({ user, type, title, toast, logAction }: { user: UserData, 
     if (type === 'investment') table = 'ywf_investments';
 
     try {
-      const { data, error } = await supabase.from(table).select('*').order('created_at', { ascending: false });
-      if (error) {
-        console.error(`Fetch error for ${table}:`, error.message);
-        toast(`ডেটা লোড করতে সমস্যা হয়েছে: ${error.message}`, 'e');
+      let query;
+      if (type === 'profit') {
+        const { data: profitData, error: profitError } = await supabase
+          .from(table)
+          .select('*, investment:ywf_investments(name)')
+          .order('created_at', { ascending: false });
+        
+        if (profitError) {
+          console.warn('Profit join fetch failed, falling back:', profitError.message);
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from(table)
+            .select('*')
+            .order('created_at', { ascending: false });
+          if (fallbackError) throw fallbackError;
+          setData(fallbackData || []);
+        } else {
+          setData(profitData || []);
+        }
+      } else {
+        const { data: otherData, error: otherError } = await supabase
+          .from(table)
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (otherError) throw otherError;
+        setData(otherData || []);
       }
-      if (data) setData(data);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Finance fetch exception:', err);
+      toast(`ডেটা লোড করতে সমস্যা হয়েছে: ${err.message}`, 'e');
     } finally {
       setLoading(false);
     }
@@ -2303,39 +2471,61 @@ function FinanceView({ user, type, title, toast, logAction }: { user: UserData, 
 
   const handleAdd = async () => {
     const cleanAmount = parseFloat(bnToEn(amount));
-    if (!amount || isNaN(cleanAmount) || !note) {
+    if (!amount || isNaN(cleanAmount) || (type === 'investment' && !name)) {
       toast('সঠিক পরিমাণ এবং তথ্য দিন', 'e');
       return;
     }
     setLoading(true);
+    setUploading(true);
     let table = 'ywf_profits';
     if (type === 'expense') table = 'ywf_expenses';
     if (type === 'investment') table = 'ywf_investments';
 
     try {
+      let imageUrl = editingItem?.image_url || '';
+      if (file) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}_inv.${fileExt}`;
+        const { error: uploadError } = await supabase.storage.from('ywf-photos').upload(fileName, file);
+        if (uploadError) throw uploadError;
+        const { data: { publicUrl } } = supabase.storage.from('ywf-photos').getPublicUrl(fileName);
+        imageUrl = publicUrl;
+      }
+
       if (editingItem) {
         // Update specific table
-        const { error } = await supabase.from(table).update({
+        const updatePayload: any = {
           amount: cleanAmount,
           note,
           date,
           updated_at: new Date().toISOString()
-        }).eq('id', editingItem.id);
+        };
+        if (type === 'investment') {
+          updatePayload.name = name;
+          updatePayload.image_url = imageUrl;
+        }
+        if (type === 'profit') {
+          updatePayload.investment_id = investmentId || null;
+          updatePayload.month_year = `${year}-${month}`;
+        }
+
+        const { error } = await supabase.from(table).update(updatePayload).eq('id', editingItem.id);
 
         if (error) throw error;
 
         // Also update transactions ledger
         await supabase.from('ywf_transactions').update({
           amount: cleanAmount,
-          note,
+          note: type === 'investment' ? `${name}: ${note}` : type === 'profit' ? `${month}/${year} লভ্যাংশ: ${note}` : note,
           date,
-          month_year: date.slice(0, 7)
+          month_year: type === 'profit' ? `${year}-${month}` : date.slice(0, 7)
         }).eq('ref_id', editingItem.id);
 
         toast('সফলভাবে আপডেট করা হয়েছে', 's');
-        logAction(`${gT()} আপডেট করা হয়েছে: ${cleanAmount} TK (${note})`);
+        logAction(`${gT()} আপডেট করা হয়েছে: ${cleanAmount} TK (${type === 'investment' ? name : note})`);
         setIsModalOpen(false);
         setEditingItem(null);
+        setFile(null);
         fetchData();
       } else {
         const payload: any = {
@@ -2343,7 +2533,15 @@ function FinanceView({ user, type, title, toast, logAction }: { user: UserData, 
           note,
           date
         };
-        if (type === 'investment') payload.status = 'active';
+        if (type === 'investment') {
+          payload.status = 'active';
+          payload.name = name;
+          payload.image_url = imageUrl;
+        }
+        if (type === 'profit') {
+          payload.investment_id = investmentId || null;
+          payload.month_year = `${year}-${month}`;
+        }
         
         const { data: inserted, error } = await supabase.from(table).insert(payload).select().single();
 
@@ -2352,25 +2550,28 @@ function FinanceView({ user, type, title, toast, logAction }: { user: UserData, 
         // Also add to transactions ledger for master reporting
         if (inserted) {
           await supabase.from('ywf_transactions').insert({
+            member_id: user.id, // Track who added it
             amount: cleanAmount,
             type: type,
-            note: note,
+            note: type === 'investment' ? `${name}: ${note}` : type === 'profit' ? `${month}/${year} লভ্যাংশ: ${note}` : note,
             date: date,
             ref_id: inserted.id,
-            month_year: date.slice(0, 7), // YYYY-MM
+            month_year: type === 'profit' ? `${year}-${month}` : date.slice(0, 7), // YYYY-MM
             status: 'approved'
           });
         }
 
         toast('সফলভাবে যোগ করা হয়েছে', 's');
-        logAction(`${gT()} যোগ করা হয়েছে: ${cleanAmount} TK (${note})`);
+        logAction(`${gT()} যোগ করা হয়েছে: ${cleanAmount} TK (${type === 'investment' ? name : note})`);
         setIsModalOpen(false);
+        setFile(null);
         fetchData();
       }
     } catch (err: any) {
       toast('ত্রুটি: ' + err.message, 'e');
     } finally {
       setLoading(false);
+      setUploading(false);
     }
   };
 
@@ -2398,16 +2599,29 @@ function FinanceView({ user, type, title, toast, logAction }: { user: UserData, 
   const openEdit = (item: any) => {
     setEditingItem(item);
     setAmount(item.amount.toString());
+    setName(item.name || '');
     setNote(item.note);
     setDate(item.date || item.created_at?.split('T')[0] || new Date().toISOString().split('T')[0]);
+    if (type === 'profit' && item.month_year) {
+      const [y, m] = item.month_year.split('-');
+      setYear(y);
+      setMonth(m);
+      setInvestmentId(item.investment_id || '');
+    }
+    setFile(null);
     setIsModalOpen(true);
   };
 
   const openNew = () => {
     setEditingItem(null);
     setAmount('');
+    setName('');
     setNote('');
     setDate(new Date().toISOString().split('T')[0]);
+    setMonth((new Date().getMonth() + 1).toString().padStart(2, '0'));
+    setYear(new Date().getFullYear().toString());
+    setInvestmentId('');
+    setFile(null);
     setIsModalOpen(true);
   };
 
@@ -2427,7 +2641,7 @@ function FinanceView({ user, type, title, toast, logAction }: { user: UserData, 
             <h2 className="text-xl font-black">{gT()}</h2>
             <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">মোট: ৳{fmt(data.reduce((s, x) => s + x.amount, 0))}</p>
           </div>
-          {(user.role !== 'member' || user.email === 'youngsterwelfarefoundationywf@gmail.com') && (
+          {(user.role !== 'member' || FOUNDATION_EMAILS.includes(user.email)) && (
             <button 
               onClick={openNew} 
               className="bg-brand-primary hover:bg-brand-primary/90 text-black px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest flex items-center gap-2 shadow-xl shadow-brand-primary/20 transition-all active:scale-95"
@@ -2448,9 +2662,29 @@ function FinanceView({ user, type, title, toast, logAction }: { user: UserData, 
                       </div>
                       <div className="text-lg font-black text-white">৳{fmt(x.amount)}</div>
                    </div>
-                   <div className="text-[10px] text-text-muted font-bold uppercase">{fd(x.date || x.created_at)}</div>
+                   <div className="text-[10px] text-text-muted font-bold uppercase">
+                     {type === 'profit' && x.month_year ? (
+                       `${MB[parseInt(x.month_year.split('-')[1]) - 1]} ${x.month_year.split('-')[0]}`
+                     ) : fd(x.date || x.created_at)}
+                   </div>
                 </div>
-                <p className="text-xs text-text-primary leading-relaxed">{x.note}</p>
+                {type === 'investment' && x.name && (
+                   <h4 className="text-sm font-black text-white mb-2 line-clamp-1 group-hover:text-brand-primary transition-colors">{x.name}</h4>
+                )}
+                {type === 'profit' && x.investment?.name && (
+                   <div className="flex items-center gap-1.5 mb-2">
+                     <div className="w-1.5 h-1.5 rounded-full bg-brand-primary" />
+                     <span className="text-[10px] font-black text-brand-primary/80 uppercase tracking-widest truncate">{x.investment.name}</span>
+                   </div>
+                )}
+                <p className="text-xs text-text-primary leading-relaxed line-clamp-3">{x.note}</p>
+                
+                {type === 'investment' && x.image_url && (
+                   <div className="mt-4 rounded-xl overflow-hidden aspect-video bg-white/5 border border-white/5 group-hover:border-white/10 transition-all">
+                      <img src={x.image_url} alt={x.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                   </div>
+                )}
+
                 <div className="mt-4 pt-3 border-t border-white/5 flex justify-between items-center">
                    {type === 'investment' ? (
                       <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${x.status === 'active' ? 'bg-green-500/10 text-green-500' : 'bg-white/10 text-text-muted'}`}>
@@ -2458,8 +2692,8 @@ function FinanceView({ user, type, title, toast, logAction }: { user: UserData, 
                       </span>
                    ) : <div />}
                    
-                    {(user.role !== 'member' || user.email === 'youngsterwelfarefoundationywf@gmail.com') && (
-                      <div className="flex gap-2">
+                    {(user.role !== 'member' || FOUNDATION_EMAILS.includes(user.email)) && (
+                      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                          <button onClick={() => openEdit(x)} className="p-2 bg-blue-500/10 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition-all shadow-sm" title="সম্পাদনা">
                             <Edit2 className="w-3.5 h-3.5" />
                          </button>
@@ -2477,25 +2711,74 @@ function FinanceView({ user, type, title, toast, logAction }: { user: UserData, 
 
        <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={`${editingItem ? 'এডিট করুন' : gT() + ' যোগ করুন'}`}>
           <div className="space-y-4">
-             <Input label="পরিমাণ (৳) *" type="number" value={amount} onChange={e => setAmount(e.target.value)} />
-             <Input label="তারিখ *" type="date" value={date} onChange={e => setDate(e.target.value)} />
-             <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest ml-1">বিবরণ *</label>
-                <textarea value={note || ''} onChange={e => setNote(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 px-4 text-sm text-white outline-none focus:border-brand-light min-h-24" />
+             {type === 'investment' && (
+                <Input label="বিনিয়োগের নাম *" placeholder="যেমন: জমি ক্রয়" value={name} onChange={e => setName(e.target.value)} />
+             )}
+             {type === 'profit' && (
+                <>
+                  <Select 
+                    label="বিনিয়োগ (ঐচ্ছিক)" 
+                    value={investmentId} 
+                    onChange={e => setInvestmentId(e.target.value)}
+                    options={[
+                      { value: '', label: '-- সরাসরি লাভ --' },
+                      ...investments.map(inv => ({ value: inv.id, label: inv.name }))
+                    ]}
+                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <Select 
+                      label="মাস *" 
+                      value={month} 
+                      onChange={e => setMonth(e.target.value)}
+                      options={MB.map((m, i) => ({ value: (i + 1).toString().padStart(2, '0'), label: m }))}
+                    />
+                    <Select 
+                      label="বছর *" 
+                      value={year} 
+                      onChange={e => setYear(e.target.value)}
+                      options={Array.from({ length: 5 }, (_, i) => ({ value: (new Date().getFullYear() - 1 + i).toString(), label: (new Date().getFullYear() - 1 + i).toString() }))}
+                    />
+                  </div>
+                </>
+             )}
+             <div className="grid grid-cols-2 gap-4">
+                <Input label={type === 'profit' ? "লাভের পরিমাণ (৳) *" : "পরিমাণ (৳) *"} type="number" value={amount} onChange={e => setAmount(e.target.value)} />
+                {type !== 'profit' && (
+                  <Input label="তারিখ *" type="date" value={date} onChange={e => setDate(e.target.value)} />
+                )}
              </div>
+             <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest ml-1">{type === 'profit' ? 'নোট' : 'বিবরণ'}</label>
+                <textarea 
+                  value={note || ''} 
+                  onChange={e => setNote(e.target.value)} 
+                  placeholder={type === 'profit' ? "মন্তব্য" : "বিস্তারিত..."}
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 px-4 text-sm text-white outline-none focus:border-brand-light min-h-24" 
+                />
+             </div>
+             {type === 'investment' && (
+                <div className="space-y-1.5">
+                   <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest ml-1">ছবি (ঐচ্ছিক)</label>
+                   <input 
+                     type="file" 
+                     onChange={e => setFile(e.target.files?.[0] || null)}
+                     className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 px-4 text-xs text-text-muted outline-none file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-black file:uppercase file:bg-white/10 file:text-white hover:file:bg-white/20 transition-all cursor-pointer"
+                   />
+                </div>
+             )}
              <div className="flex gap-4 pt-4">
                 <button 
                   onClick={() => setIsModalOpen(false)} 
-                  className="flex-1 bg-white/5 border border-white/10 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-white/10 transition-all"
+                  className="flex-1 bg-white/5 border border-white/10 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-white/10 transition-all"
                 >
                   বাতিল
                 </button>
                 <button 
                   onClick={handleAdd} 
-                  disabled={loading}
-                  className="flex-1 bg-brand-primary text-black py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-brand-primary/20 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
+                  disabled={loading || uploading}
+                  className="flex-1 bg-brand-primary text-black py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-brand-primary/20 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
                 >
-                   {loading ? <div className="sp w-5 h-5 border-black/30 border-t-black" /> : <Plus className="w-5 h-5" />} {editingItem ? 'আপডেট করুন' : gT() + ' নিশ্চিত করুন'}
+                   {loading || uploading ? <div className="sp w-5 h-5 border-black/30 border-t-black" /> : <TrendingUp className="w-5 h-5" />} {editingItem ? 'আপডেট করুন' : gT() + ' যোগ করুন'}
                 </button>
              </div>
           </div>
@@ -2945,7 +3228,7 @@ function StatementView({ user, userId, toast }: { user: UserData, userId?: strin
                    <th className="px-6 py-4 text-[10px] font-black uppercase text-text-dark">স্ট্যাটাস</th>
                    <th className="px-6 py-4 text-[10px] font-black uppercase text-text-dark">মেথড</th>
                    <th className="px-6 py-4 text-[10px] font-black uppercase text-text-dark text-right">পরিমাণ</th>
-                   {(user.role !== 'member' || user.email === 'youngsterwelfarefoundationywf@gmail.com') && <th className="px-6 py-4 text-[10px] font-black uppercase text-text-dark text-center">অ্যাকশন</th>}
+                   {(user.role !== 'member' || FOUNDATION_EMAILS.includes(user.email)) && <th className="px-6 py-4 text-[10px] font-black uppercase text-text-dark text-center">অ্যাকশন</th>}
                 </tr>
              </thead>
              <tbody className="divide-y divide-white/5 bg-bg-secondary/30">
@@ -3008,7 +3291,7 @@ function StatementView({ user, userId, toast }: { user: UserData, userId?: strin
                             {t.type === 'deposit' || t.type === 'profit' ? '+' : '-'}৳{fmt(t.amount)}
                          </div>
                       </td>
-                      {(user.role !== 'member' || user.email === 'youngsterwelfarefoundationywf@gmail.com') && (
+                      {(user.role !== 'member' || FOUNDATION_EMAILS.includes(user.email)) && (
                         <td className="px-6 py-5">
                            <div className="flex items-center justify-center gap-2">
                                <button onClick={() => { 
@@ -3023,7 +3306,7 @@ function StatementView({ user, userId, toast }: { user: UserData, userId?: strin
                                  }
                                  setIsModalOpen(true); 
                                }} className="p-3 bg-brand-primary/10 text-brand-primary rounded-xl hover:bg-brand-primary hover:text-black transition-all duration-300 border border-brand-primary/20 flex items-center justify-center"><Edit2 className="w-4 h-4" /></button>
-                               {(user.role === 'super_admin' || user.email === 'youngsterwelfarefoundationywf@gmail.com') && (
+                               {(user.role === 'super_admin' || FOUNDATION_EMAILS.includes(user.email)) && (
                                  <button onClick={() => handleDelete(t.id)} className="p-3 bg-brand-danger/10 text-brand-danger rounded-xl hover:bg-brand-danger hover:text-white transition-all duration-300 border border-brand-danger/20 flex items-center justify-center">
                                     <Trash2 className="w-4 h-4" />
                                  </button>
@@ -3072,6 +3355,11 @@ function StatementView({ user, userId, toast }: { user: UserData, userId?: strin
     </div>
   );
 }
+
+const FOUNDATION_EMAILS = [
+  'youngsterwelfarefoundationywf@gmail.com',
+  'risevoiceforchange2025@gmail.com'
+];
 
 function LoginPage({ onLogin }: { onLogin: () => void }) {
   const [role, setRole] = useState<Role>('member');

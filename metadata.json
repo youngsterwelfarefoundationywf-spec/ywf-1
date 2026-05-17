@@ -2,5 +2,5 @@
   "name": "Youngster Welfare Foundation",
   "description": "A comprehensive fund management system featuring membership tracking, financial reports, and secure payment processing.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
